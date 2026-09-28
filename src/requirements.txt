@@ -1,0 +1,10 @@
+numpy>=1.19.5
+matplotlib>=3.3.4
+jupyter>=1.1.1
+decida>=1.1.5
+pandas>=1.1.5
+scikit-learn>=1.8.0
+future>=1.0.0
+graphviz
+seaborn
+torch

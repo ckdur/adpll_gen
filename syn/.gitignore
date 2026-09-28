@@ -1,0 +1,12 @@
+*.cmd*
+*.log*
+*.cmd
+outputs/*
+reports/*
+fv/*
+*_net.v
+*_net.sdf
+*_sim.v
+*.sdf
+*_intermediate.v
+*.tstamp

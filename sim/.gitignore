@@ -1,0 +1,15 @@
+*.log*
+*.meas
+logFile
+*.ic*
+*.tr*
+*.su*
+*.mt*
+*.st*
+*.pa*
+xcelium.d
+*.history
+*.vcd
+.nfs*
+outputs/
+outputs/*
