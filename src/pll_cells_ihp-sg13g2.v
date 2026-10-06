@@ -275,13 +275,13 @@ module PLL_CELL_CLKINVX1(
   input I,
   output ZN
 );
-  // CLKINVX1 -> sg13g2_buf_1
+  // CLKINVX1 -> sg13g2_inv_1
   (* keep *) (* dont_touch = "true" *)
-  sg13g2_buf_1 impl(
+  sg13g2_inv_1 impl(
 `ifdef WITH_POWER
     .VDD(VDD), .VSS(VSS), 
 `endif
-    .A(I), .X(ZN)
+    .A(I), .Y(ZN)
   );
 endmodule
 

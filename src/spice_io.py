@@ -53,8 +53,9 @@ def read_raw(fil):
     return {n: values[:, i] for i, n in enumerate(names)}
 
 def read_meas(fil):
-    """Returns a dict {measurement name: value} from an ngspice log, in order.
-    Failed measurements have None as value."""
+    """Returns a dict {measurement name: value} from an ngspice log.
+    Failed measurements have None as value.
+    NOTE: ngspice prints the failed ones first, so the order is not the one of the .meas"""
     meas = {}
     with open(fil) as f:
         for line in f:
@@ -70,10 +71,13 @@ def read_meas(fil):
 
 def meas_until_failed(fil, prefix):
     """The values of the measurements starting with prefix, up to the first failed one."""
+    meas = read_meas(fil)
+    # Sort by the number after the prefix (tdel00, tdel01, ...)
+    names = sorted((k for k in meas if re.fullmatch(re.escape(prefix) + r'\d+', k)),
+                   key=lambda k: int(k[len(prefix):]))
     values = []
-    for k, v in read_meas(fil).items():
-        if k.startswith(prefix):
-            if v is None:
-                break
-            values.append(v)
+    for k in names:
+        if meas[k] is None:
+            break
+        values.append(meas[k])
     return values
