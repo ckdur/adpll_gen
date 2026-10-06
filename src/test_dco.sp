@@ -1,13 +1,6 @@
 * PLL test
 
 .TEMP 25
-.OPTION
-+    ARTIST=2
-+    INGOLD=2
-+    PARHIER=LOCAL
-+    PSF=2
-+    PROBE
-+    POST=2
 .PARAM Rdigload=1M
 .PARAM Cdigload=2e-15
 .PARAM fclk=100000000
@@ -18,13 +11,12 @@
 .PARAM stopsim=(10000n)
 
 * Include the models
-.inc lib.sp
+.inc models.inc
 
 * Include the actual netlist
 .inc PLL_ILDCO.sp
 
 vvdd VDD GND DC=lvdd
-vgnd GND 0 DC=0
 
 * To avoid warnings when simulating
 vpoc POC 0 DC=0
@@ -115,7 +107,7 @@ xloadssbbpd0 VDD GND SS_BBPD<0> SS_BBPD_L<0> PLL_CELL_BUFFX0
 xloadssbbpd1 VDD GND SS_BBPD<1> SS_BBPD_L<1> PLL_CELL_BUFFX0
 xloadmidout VDD GND MID_OUT MID_OUT_L PLL_CELL_BUFFX0
 xloadout VDD GND OUT OUT_L PLL_CELL_BUFFX0
-cloadssbbpd0 SS_BBPD_L<0> GND Cdigload
-cloadssbbpd1 SS_BBPD_L<1> GND Cdigload
-cloadmidout MID_OUT_L GND Cdigload
-cloadout OUT_L GND Cdigload
+cloadssbbpd0 SS_BBPD_L<0> GND 'Cdigload'
+cloadssbbpd1 SS_BBPD_L<1> GND 'Cdigload'
+cloadmidout MID_OUT_L GND 'Cdigload'
+cloadout OUT_L GND 'Cdigload'

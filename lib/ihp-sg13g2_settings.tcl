@@ -7,7 +7,7 @@ if { [info exists ::env(PDK_ROOT)]} {
 }
 
 set ROOT_DIR $env(ROOT_DIR)
-set LIB_PATHS "ihp-sg13g2/libs.ref/sg13g2_stdcell/lib ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lib"
+set LIB_PATHS "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lib"
 set LIBS "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/sg13g2_stdcell_typ_1p20V_25C.lib ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lib/sg13g2_io_typ_1p2V_3p3V_25C.lib"
 set LEFS "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lef/sg13g2_tech.lef ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lef/sg13g2_stdcell.lef ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lef/sg13g2_io.lef"
 set GDSS "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/gds/sg13g2_stdcell.gds ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/gds/sg13g2_io.gds"
@@ -18,7 +18,6 @@ set SPICES "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/spice/sg13g2_stdcell.
 set LIBS_BC "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/sg13g2_stdcell_fast_1p65V_m40C.lib ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lib/sg13g2_io_fast_1p65V_3p6V_m40C.lib"
 set LIBS_WC "${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_stdcell/lib/sg13g2_stdcell_slow_1p08V_125C.lib ${PDK_ROOT}/ihp-sg13g2/libs.ref/sg13g2_io/lib/sg13g2_io_slow_1p08V_3p0V_125C.lib"
 
-# TODO: Not defined yet
 set RCX_RULES "${PDK_ROOT}/ihp-sg13g2/libs.tech/librelane/openrcx/IHP_rcx_patterns.rules"
 
 set techsite "CoreSite"

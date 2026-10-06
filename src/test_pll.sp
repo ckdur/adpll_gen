@@ -11,15 +11,14 @@
 .PARAM stopsim=(10000n)
 
 * Include the models
-.inc lib.sp
+.inc models.inc
 
 * Include the actual netlist
 .inc pll.sp
 
 vvdd VDD GND DC=lvdd
-vgnd GND 0 DC=0
-Vin REF 0 PULSE lvdd 0 0 0.05n 0.05n (tclk1) (tclk2)
-VRST_N RST_N 0 PULSE lvdd 0 0 0.05n 0.05n (tclk1) (stopsim)
+Vin REF 0 PULSE lvdd 0 0 0.05n 0.05n 'tclk1' 'tclk2'
+VRST_N RST_N 0 PULSE lvdd 0 0 0.05n 0.05n 'tclk1' 'stopsim'
 
 * Injection state
 Vinj_en INJ_EN 0 DC=0
@@ -92,8 +91,8 @@ xloadlocked VDD GND LOCKED LOCKED_L PLL_CELL_BUFFX0
 xloaderr VDD GND ERR ERR_L PLL_CELL_BUFFX0
 xloadout VDD GND OUT OUT_L PLL_CELL_BUFFX0
 xloadoutdiv VDD GND OUT_DIV OUT_DIV_L PLL_CELL_BUFFX0
-cloadlocked LOCKED_L GND Cdigload
-cloaderr ERR_L GND Cdigload
-cloadout OUT_L GND Cdigload
-cloadoutdiv OUT_DIV_L GND Cdigload
+cloadlocked LOCKED_L GND 'Cdigload'
+cloaderr ERR_L GND 'Cdigload'
+cloadout OUT_L GND 'Cdigload'
+cloadoutdiv OUT_DIV_L GND 'Cdigload'
 

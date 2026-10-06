@@ -6,23 +6,19 @@ import sys, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from decida.Data import Data
 from scipy.signal import welch, hilbert
 from scipy.interpolate import interp1d
 from stable_time import *
+from spice_io import read_raw
 
 # Configuration
 
-d = Data()  # verbose=True
-d.read_hspice(sys.argv[1])
-rows = d.nrows()
-cols = d.ncols()
-
-t = d.get(0)
-v_locked = d.get(1)
-v_err = d.get(2)
-v_out = d.get(3)
-v_ref = d.get(4)
+d = read_raw(sys.argv[1])
+t = d["time"]
+v_locked = d["v(locked)"]
+v_err = d["v(err)"]
+v_out = d["v(out)"]
+v_ref = d["v(ref)"]
 
 dt = np.diff(t)
 fs = 4/np.min(dt[dt > 0])  # Four times the minimal time detected in the simulation

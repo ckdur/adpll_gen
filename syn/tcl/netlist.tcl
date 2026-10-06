@@ -31,6 +31,24 @@ read_verilog $env(SYN_ANA_NET)
 read_verilog $env(SYN_NET)
 link_design ${TOP}
 
+# The synthesized netlist has no supplies. Create the VDD/VSS ports and
+# connect every cell supply pin to them, so the spice netlist is powered.
+set block [ord::get_db_block]
+foreach {supply sigtype} {VDD POWER VSS GROUND} {
+  set net [$block findNet $supply]
+  if {$net == "NULL"} {
+    set net [odb::dbNet_create $block $supply]
+  }
+  $net setSpecial
+  $net setSigType $sigtype
+  if {[$block findBTerm $supply] == "NULL"} {
+    odb::dbBTerm_create $net $supply
+  }
+}
+add_global_connection -net VDD -pin_pattern {^VDD$} -power
+add_global_connection -net VSS -pin_pattern {^VSS$} -ground
+global_connect
+
 if {![file exists outputs]} {
   file mkdir outputs
   puts "Creating directory outputs"

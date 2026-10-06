@@ -1,45 +1,26 @@
 #!python
 
 # Invoke me with:
-# python3 ../src/create_sim_inj.py outputs/test_pll_injection.mt0
+# python3 ../src/create_sim_inj.py outputs/test_pll_injection.log
 
-import re, sys
+import sys
+from spice_io import read_meas
 
 def convert_simulation_to_verilog(fil):
-    with open(fil) as f:
-        data = f.read()
-
-    lines = data.splitlines()
-
-    # 1. Extract column names (between .TITLE and the numeric block)
-    header_lines = []
-    data_lines = []
-    in_data = False
-
-    for line in lines:
-        if in_data:
-            data_lines.append(line)
-        elif line.strip() and not line.startswith(('$DATA', '.TITLE')):
-            header_lines.append(line)
-        if re.search(r'alter', line.strip()):  # line has numbers
-            in_data = True
-
-    # 2. Join and split by whitespace
-    headers = re.split(r'\s+', " ".join(header_lines).strip())
-    values = re.split(r'\s+', " ".join(data_lines).strip())
+    meas = read_meas(fil)
 
     # Convert all values to the nearest integer, in fento-seconds
     str = ""
     
-    v3 = float(values[2])  # twin_start tedge_start
+    v3 = meas["tedge_start"]
     iv3 = int(v3 * 1e15)
     str = str + (f"    always @(REF) INJ_EDGE = #({iv3}) REF; // tedge_start = {v3}\n")
     
-    v1 = float(values[0])  # twin_start
+    v1 = meas["twin_start"]
     iv1 = int(v1 * 1e15)
     str = str + (f"    always @(REF) DEL_REF = #({iv1}) REF; // twin_start = {v1}\n")
     
-    v2 = float(values[1])  # twin_len
+    v2 = meas["twin_len"]
     iv2 = int(v2 * 1e15)
     str = str + (f"    always @(REF) DEL_EDGE = #({iv1} + {iv2}) REF; // twin_start + twin_len = {v1} + {v2}\n")
 

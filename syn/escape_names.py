@@ -6,11 +6,14 @@ def clean_escaped_names(text: str) -> str:
     def replace(match):
         raw = match.group(1)
         # Convert special characters to underscores
-        cleaned = re.sub(r'[\[\]\.\-]', '_', raw)
+        # (also the ones of parametrized modules, e.g. $paramod\FINE_DELAY\NDELS=s32'...)
+        cleaned = re.sub(r'[^A-Za-z0-9_]', '_', raw)
         # Collapse multiple underscores (e.g., ___ -> _)
-        return re.sub(r'_+', '_', cleaned)
+        cleaned = re.sub(r'_+', '_', cleaned)
+        # Keep the whitespace, it may separate the name from the next identifier
+        return cleaned + match.group(2)
 
-    return re.sub(r'\\([^\s]+)\s', replace, text)
+    return re.sub(r'\\([^\s]+)(\s)', replace, text)
 
 for filepath in sys.argv[1:]:
     with open(filepath, 'r+', encoding='utf-8') as f:

@@ -1,7 +1,7 @@
 PRJ_DIR=$(abspath ../)
 DIG_DIR=$(abspath ../../../)
-include $(PRJ_DIR)/settings.mk
 SIM_DIR=$(abspath .)
+include $(PRJ_DIR)/settings.mk
 SYN_DIR=$(abspath ../syn)
 SRC_DIR=$(abspath ../src)
 
