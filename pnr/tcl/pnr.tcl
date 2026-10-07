@@ -289,3 +289,5 @@ write_def $OUTPUTS/${TOP}.def
 write_abstract_lef $OUTPUTS/${TOP}.lef
 write_timing_model $OUTPUTS/${TOP}.lib
 write_cdl -masters ${CDLS} $OUTPUTS/${TOP}.cdl
+write_spef $OUTPUTS/${TOP}.spef
+write_sdf -include_typ -divider . $OUTPUTS/${TOP}.sdf
