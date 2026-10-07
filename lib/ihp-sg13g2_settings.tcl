@@ -39,3 +39,15 @@ proc make_routing {} {
   make_tracks TopMetal1 -x_offset 1.46 -x_pitch 2.28 -y_offset 1.46 -y_pitch 2.28
   make_tracks TopMetal2 -x_offset 2.0  -x_pitch 4.0  -y_offset 2.0 -y_pitch 4.0
 }
+
+# Additional librelane-related stuff
+set ::env(PDN_ENABLE_RAILS) 1
+set ::env(PDN_ENABLE_PINS) 1
+set ::env(PDN_EXTEND_TO) "boundary"
+set ::env(PDN_CORE_RING_ALLOW_OUT_OF_DIE) 1
+set ::env(PDN_CORE_RING_CONNECT_TO_PADS) 0
+set ::env(PDN_ENABLE_GLOBAL_CONNECTIONS) 1
+set ::env(PL_SKIP_INITIAL_PLACEMENT) 0
+set ::env(PL_WIRE_LENGTH_COEF) 0.25
+set ::env(PL_MAX_DISPLACEMENT_X) 500
+set ::env(PL_MAX_DISPLACEMENT_Y) 100

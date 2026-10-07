@@ -27,9 +27,9 @@ set SPICES "${PDK_ROOT}/${PDK}/libs.ref/ics55_LLSC_H7CR/spice/ics55_LLSC_H7CR.sp
 set LIBS_BC "${PDK_ROOT}/${PDK}/libs.ref/ics55_LLSC_H7CR/liberty/ics55_LLSC_H7CR_ff_rcbest_1p32_m40_nldm.lib ${PDK_ROOT}/${PDK}/libs.ref/ICsprout_55LLULP1233_IO_251013/liberty/ICSIOA_N55_3P3_ff_1p32_3p63_m40c.lib"
 set LIBS_WC "${PDK_ROOT}/${PDK}/libs.ref/ics55_LLSC_H7CR/liberty/ics55_LLSC_H7CR_ss_rcworst_1p08_125_nldm.lib ${PDK_ROOT}/${PDK}/libs.ref/ICsprout_55LLULP1233_IO_251013/liberty/ICSIOA_N55_3P3_ss_1p08_2p97_125c.lib"
 
-set RCX_RULES "${PDK_ROOT}/${PDK}/libs.tech/librelane/ics55_LLSC_H7CR/rcx.rules"
+set RCX_RULES "${PDK_ROOT}/${PDK}/libs.tech/librelane/rcx.rules"
 
-set techsite "CoreSite"
+set techsite "core7"
 set techname "${PDK}"
 set techdbname "N551P6M_ecos"
 set libdbname "ics55_LLSC_H7CR_ecos"
@@ -61,3 +61,24 @@ proc make_routing {} {
   make_tracks T4M2 -x_offset 0.0 -x_pitch 0.8 -y_offset 0.0 -y_pitch 0.8
   make_tracks RDL  -x_offset 0.0 -x_pitch 5.0 -y_offset 0.0 -y_pitch 5.0
 }
+
+# Additional librelane-related stuff
+set ::env(PDN_ENABLE_RAILS) 1
+set ::env(PDN_ENABLE_PINS) 1
+set ::env(PDN_EXTEND_TO) "boundary"
+set ::env(PDN_CORE_RING_ALLOW_OUT_OF_DIE) 1
+set ::env(PDN_CORE_RING_CONNECT_TO_PADS) 0
+set ::env(PDN_ENABLE_GLOBAL_CONNECTIONS) 1
+set ::env(PL_SKIP_INITIAL_PLACEMENT) 0
+set ::env(PL_WIRE_LENGTH_COEF) 0.25
+set ::env(PL_MAX_DISPLACEMENT_X) 500
+set ::env(PL_MAX_DISPLACEMENT_Y) 100
+set ::env(GRT_ADJUSTMENT) 0.3
+set ::env(SET_RC_VERBOSE) 0
+set ::env(CLOCK_NET) "REF"
+set ::env(CTS_DISTANCE_BETWEEN_BUFFERS) 0
+set ::env(CTS_CLK_MAX_WIRE_LENGTH) 0
+set ::env(DRT_THREADS) 1
+set ::env(DRT_SAVE_SNAPSHOTS) 0
+set ::env(DRT_OPT_ITERS) 64
+set ::env(RCX_MERGE_VIA_WIRE_RES) 1
