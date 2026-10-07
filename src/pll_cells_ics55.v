@@ -31,6 +31,7 @@ module PLL_CELL_INVX2(
   output ZN
 );
   // INVX2 -> INVX2H7R
+  // Mainly affects the base delay of the mid-delay. INVX2>LOAD(NAND3X8)>INVX2
   (* keep *) (* dont_touch = "true" *)
   INVX2H7R impl(
 `ifdef WITH_POWER
@@ -48,6 +49,7 @@ module PLL_CELL_INVX5(
   output ZN
 );
   // INVX5 -> INVX5H7R
+  // Mainly affects the base delay of the fine-delay. INVX5>LOAD(NAND3X1)>INVX5
   (* keep *) (* dont_touch = "true" *)
   INVX5H7R impl(
 `ifdef WITH_POWER
@@ -65,6 +67,7 @@ module PLL_CELL_INVX9(
   output ZN
 );
   // INVX9 -> INVX8H7R
+  // Not actually used
   (* keep *) (* dont_touch = "true" *)
   INVX8H7R impl(
 `ifdef WITH_POWER
@@ -81,14 +84,26 @@ module PLL_CELL_NAND3X8(
   input A0, A1, A2, // NOTE: A1 should be ALWAYS the middle one. Check it on the spice.
   output ZN
 );
-  // NAND3X8 -> NAND3X8H7R
+  // NAND3X8 -> NAND3X6H7R x2
+  // Mainly affects the base delay of the mid-delay. INVX2>LOAD(NAND3X8)>INVX2
   (* keep *) (* dont_touch = "true" *)
-  NAND3X8H7R impl(
+  NAND3X8H7R impl_1(
 `ifdef WITH_POWER
     .VDD(VDD), .VSS(VSS), 
 `endif
     // A0 Should be to the gate that goes to GND
-    .A(A2), .B(A1), .C(A0), .Y(ZN)
+    // NOTE: A0 gate ground makes the delays inverted.
+    .A(A0), .B(A1), .C(A2), .Y(ZN)
+  );
+
+  (* keep *) (* dont_touch = "true" *)
+  NAND3X6H7R impl_2(
+`ifdef WITH_POWER
+    .VDD(VDD), .VSS(VSS), 
+`endif
+    // A0 Should be to the gate that goes to GND
+    // NOTE: A0 gate ground makes the delays inverted.
+    .A(A0), .B(A1), .C(A2), .Y(ZN)
   );
 
 endmodule
@@ -101,13 +116,15 @@ module PLL_CELL_NAND3X1(
   output ZN
 );
   // NAND3X1 -> NAND3X1H7R
+  // Mainly affects the base delay of the fine-delay. INVX5>LOAD(NAND3X1)>INVX5
   (* keep *) (* dont_touch = "true" *)
   NAND3X1H7R impl(
 `ifdef WITH_POWER
     .VDD(VDD), .VSS(VSS), 
 `endif
     // A0 Should be to the gate that goes to GND
-    .A(A2), .B(A1), .C(A0), .Y(ZN)
+    // NOTE: A0 gate ground makes the delays inverted.
+    .A(A0), .B(A1), .C(A2), .Y(ZN)
   );
 
 endmodule
@@ -156,6 +173,7 @@ module PLL_CELL_NAND2BX1(
   output ZN
 );
   // NAND2BX1 -> NAND2BX1H7R
+  // Mainly used for the coarse delay. If want to increase coarse delay, do it here.
   (* keep *) (* dont_touch = "true" *)
   NAND2BX1H7R impl(
 `ifdef WITH_POWER
@@ -286,7 +304,31 @@ module INVX1H7R (
 	input A;
 endmodule
 (* blackbox *)
+module INVX1P4H7R (
+`ifdef WITH_POWER
+  VDD, VSS,
+`endif
+  Y, A);
+`ifdef WITH_POWER
+  inout VDD, VSS;
+`endif
+	output Y;
+	input A;
+endmodule
+(* blackbox *)
 module INVX2H7R (
+`ifdef WITH_POWER
+  VDD, VSS,
+`endif
+  Y, A);
+`ifdef WITH_POWER
+  inout VDD, VSS;
+`endif
+	output Y;
+	input A;
+endmodule
+(* blackbox *)
+module INVX4H7R (
 `ifdef WITH_POWER
   VDD, VSS,
 `endif
@@ -320,6 +362,18 @@ module INVX8H7R (
 `endif
 	output Y;
 	input A;
+endmodule
+(* blackbox *)
+module NAND3X6H7R (
+`ifdef WITH_POWER
+  VDD, VSS,
+`endif
+  Y, A, B, C);
+`ifdef WITH_POWER
+  inout VDD, VSS;
+`endif
+	output Y;
+	input A, B, C;
 endmodule
 (* blackbox *)
 module NAND3X8H7R (
