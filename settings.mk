@@ -1,14 +1,14 @@
 #######################################################
 # Proportional dimmentions
-PX?=3
-PY?=2
-PR?=0.8
+PX?=2
+PY?=1
+PR?=0.4
 
 # Exact X and Y (superseeds proportional)
-X?=440
-Y?=235
-export X
-export Y
+#X?=440
+#Y?=235
+#export X
+#export Y
 
 #######################################################
 # Rules to create the files. 
@@ -54,6 +54,10 @@ update_if_changed=if cmp -s $(1).tmp $(1); then rm $(1).tmp; else mv $(1).tmp $(
 # Every technology has its own outputs (SIM_DIR and SYN_DIR are defined by the including Makefile)
 SIM_OUT=$(SIM_DIR)/outputs/$(PDK)
 SYN_OUT=$(SYN_DIR)/outputs/$(PDK)
+PNR_OUT=$(PNR_DIR)/outputs/$(PDK)
+
+SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
+SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
 
 ifeq ($(PDK),ics55)
 PDK_ROOT?=$(HOME)/Documents/SymbioticEDA/ics55/icsprout55-pdk
@@ -133,12 +137,14 @@ endif
 endif
 
 # Variables that the tcl scripts read from the environment
-DOCKER_ENV=PDK PDK_ROOT ROOT_DIR SYN_DIR SYN_OUT SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y
+DOCKER_ENV=PDK PDK_ROOT ROOT_DIR SYN_DIR SYN_OUT SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y SRC_DIR PNR_DIR PX PY PR
 DOCKER_RUN=docker run --rm -i \
 	-u $(shell id -u):$(shell id -g) -e HOME=/tmp -e MPLBACKEND=Agg \
+	--net=host \
 	-v $(ROOT_DIR):$(ROOT_DIR) \
 	$(if $(wildcard $(PDK_ROOT)),-v $(PDK_ROOT):$(PDK_ROOT)) \
 	-w $$PWD \
+	-e DISPLAY=$(DISPLAY) \
 	$(addprefix -e ,$(DOCKER_ENV)) \
 	$(DOCKER_IMAGE)
 

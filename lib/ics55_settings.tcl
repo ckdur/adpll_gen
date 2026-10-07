@@ -31,3 +31,33 @@ set RCX_RULES "${PDK_ROOT}/${PDK}/libs.tech/librelane/ics55_LLSC_H7CR/rcx.rules"
 
 set techsite "CoreSite"
 set techname "${PDK}"
+set techdbname "N551P6M_ecos"
+set libdbname "ics55_LLSC_H7CR_ecos"
+
+####################################
+## Cells declaration
+####################################
+
+set BUFCells [list BUFX0P5H7R BUFX0P7H7R BUFX10H7R BUFX12H7R \
+BUFX16H7R BUFX1H7R BUFX1P4H7R BUFX20H7R BUFX2H7R BUFX2P5H7R \
+BUFX3H7R BUFX3P5H7R BUFX4H7R BUFX5H7R BUFX6H7R BUFX7H7R \
+BUFX8H7R]
+set INVCells [list INVX0P5H7R INVX0P7H7R INVX10H7R INVX12H7R \
+INVX16H7R INVX1H7R INVX1P4H7R INVX20H7R INVX2H7R INVX2P5H7R \
+INVX3H7R INVX3P5H7R INVX4H7R INVX5H7R INVX6H7R INVX7H7R \
+INVX8H7R]
+set FILLERCells [list FILLER16H7R FILLER1H7R FILLER2H7R FILLER32H7R \
+FILLER4H7R FILLER64H7R FILLER8H7R]
+set TAPCells [list FILLTAPH7R]
+set DCAPCells [list FILLCAP16H7R FILLCAP32H7R FILLCAP4H7R FILLCAP8H7R]
+set DIODECells [list ]
+
+proc make_routing {} {
+  make_tracks MET1 -x_offset 0.0 -x_pitch 0.2 -y_offset 0.0 -y_pitch 0.2
+  make_tracks MET2 -x_offset 0.0 -x_pitch 0.2 -y_offset 0.0 -y_pitch 0.2
+  make_tracks MET3 -x_offset 0.0 -x_pitch 0.2 -y_offset 0.0 -y_pitch 0.2
+  make_tracks MET4 -x_offset 0.0 -x_pitch 0.2 -y_offset 0.0 -y_pitch 0.2
+  make_tracks MET5 -x_offset 0.0 -x_pitch 0.2 -y_offset 0.0 -y_pitch 0.2
+  make_tracks T4M2 -x_offset 0.0 -x_pitch 0.8 -y_offset 0.0 -y_pitch 0.8
+  make_tracks RDL  -x_offset 0.0 -x_pitch 5.0 -y_offset 0.0 -y_pitch 5.0
+}

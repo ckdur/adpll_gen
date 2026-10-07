@@ -14,8 +14,6 @@ export TECH
 # Everything (netlists, logs, reports) goes to $(SYN_OUT), one folder per PDK
 SYN_ANA_SDF=$(SYN_OUT)/$(TOP).sdf
 SYN_ANA_SP=$(SYN_OUT)/$(TOP).sp
-SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
-SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
 export SYN_ANA_NET
 export SYN_NET
 
