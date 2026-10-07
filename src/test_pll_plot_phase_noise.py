@@ -158,7 +158,8 @@ plt.grid(True, which="both", ls="-")
 plt.legend(fontsize=8, loc='lower left')
 
 plt.tight_layout()
-plt.savefig("outputs/pll_pn_simulation.pdf")
+# Next to the simulation results (sim/outputs/<PDK>)
+plt.savefig(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "pll_pn_simulation.pdf"))
 
 plt.show()
 

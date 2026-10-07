@@ -49,10 +49,11 @@ add_global_connection -net VDD -pin_pattern {^VDD$} -power
 add_global_connection -net VSS -pin_pattern {^VSS$} -ground
 global_connect
 
-if {![file exists outputs]} {
-  file mkdir outputs
-  puts "Creating directory outputs"
+set OUTPUTS $env(SYN_OUT)
+if {![file exists $OUTPUTS]} {
+  file mkdir $OUTPUTS
+  puts "Creating directory $OUTPUTS"
 }
 
-write_cdl -masters ${CDLS} $SYN_DIR/outputs/${TOP}.cdl
-write_cdl -masters ${SPICES} $SYN_DIR/outputs/${TOP}.sp
+write_cdl -masters ${CDLS} $OUTPUTS/${TOP}.cdl
+write_cdl -masters ${SPICES} $OUTPUTS/${TOP}.sp

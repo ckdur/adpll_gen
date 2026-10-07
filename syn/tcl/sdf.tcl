@@ -16,14 +16,15 @@ read_verilog $env(SYN_ANA_NET)
 read_verilog $env(SYN_NET)
 link_design ${TOP}
 
-if {![file exists outputs]} {
-  file mkdir outputs
-  puts "Creating directory outputs"
+set OUTPUTS $env(SYN_OUT)
+if {![file exists $OUTPUTS]} {
+  file mkdir $OUTPUTS
+  puts "Creating directory $OUTPUTS"
 }
 
 read_sdc $SYN_DIR/tcl/rtl.sdc.tcl
 
-write_sdf $SYN_DIR/outputs/${TOP}.sdf
-#write_verilog $SYN_DIR/outputs/${TOP}.v
+write_sdf $OUTPUTS/${TOP}.sdf
+#write_verilog $OUTPUTS/${TOP}.v
 
 exit

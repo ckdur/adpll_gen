@@ -44,29 +44,38 @@ LOGFILE=$(PRJ_ROOT)/$(TOP)_run.log
 
 #######################################################
 # Global settings for the technology in particular
-ADPLL_ROOT:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 #PDK?=ics55
 PDK?=ihp-sg13g2
+
+# Generated files are only replaced when their content changes, so editing this file
+# does not re-run every simulation
+update_if_changed=if cmp -s $(1).tmp $(1); then rm $(1).tmp; else mv $(1).tmp $(1); fi
+
+# Every technology has its own outputs (SIM_DIR and SYN_DIR are defined by the including Makefile)
+SIM_OUT=$(SIM_DIR)/outputs/$(PDK)
+SYN_OUT=$(SYN_DIR)/outputs/$(PDK)
 
 ifeq ($(PDK),ics55)
 PDK_ROOT?=$(HOME)/Documents/SymbioticEDA/ics55/icsprout55-pdk
 SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ics55.v
 
-$(SIM_DIR)/outputs/models.inc: $(ADPLL_ROOT)/settings.mk
+$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
 	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/$(PDK)/libs.tech/ngspice/ICsprout_55LLULP1225_V1p1_hsp.lib\" tt_mos" > $@
-	@echo ".INCLUDE \"$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/spice/ics55_LLSC_H7CR.spice\"" >> $@
-	@echo ".PARAM lvdd=1.2" >> $@
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ics55.v)" >> $@
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@
-	@echo "Ximpl I VDD VSS Z BUFX0P5H7R" >> $@
-	@echo ".ENDS" >> $@
+	@echo ".LIB \"$(PDK_ROOT)/$(PDK)/libs.tech/ngspice/ICsprout_55LLULP1225_V1p1_hsp.lib\" tt_mos" > $@.tmp
+	@echo ".INCLUDE \"$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/spice/ics55_LLSC_H7CR.spice\"" >> $@.tmp
+	@echo ".PARAM lvdd=1.2" >> $@.tmp
+	@echo "* Load used by the testbenches (same mapping as in pll_cells_ics55.v)" >> $@.tmp
+	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
+	@echo "Ximpl I VDD VSS Z BUFX0P5H7R" >> $@.tmp
+	@echo ".ENDS" >> $@.tmp
+	@$(call update_if_changed,$@)
 
-# ngspice settings for this PDK (copied as .spiceinit next to the testbenches)
-$(SIM_DIR)/outputs/.spiceinit: $(ADPLL_ROOT)/settings.mk
+# ngspice settings for this PDK (.spiceinit next to the testbenches)
+$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
 	mkdir -p $(dir $@)
-	@echo "set ngbehavior=hsa" > $@
-	@echo "set num_threads=$(NGSPICE_THREADS)" >> $@
+	@echo "set ngbehavior=hsa" > $@.tmp
+	@echo "set num_threads=$(NGSPICE_THREADS)" >> $@.tmp
+	@$(call update_if_changed,$@)
 
 CELLS_SRC=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/verilog/ics55_LLSC_H7CR.v $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/verilog/icsIOA_N55_3P3.v
 endif
@@ -76,25 +85,27 @@ ifeq ($(PDK),ihp-sg13g2)
 PDK_ROOT?=$(firstword $(wildcard /opt/ext/OpenPDKs) /usr/local/share/OpenPDKs)
 SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ihp-sg13g2.v
 
-$(SIM_DIR)/outputs/models.inc: $(ADPLL_ROOT)/settings.mk
+$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
 	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib\" mos_tt" > $@
-	@echo ".INCLUDE \"$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/spice/sg13g2_stdcell.spice\"" >> $@
-	@echo ".PARAM lvdd=1.2" >> $@
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ihp-sg13g2.v)" >> $@
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@
-	@echo "Ximpl Z I VDD VSS sg13g2_buf_1" >> $@
-	@echo ".ENDS" >> $@
+	@echo ".LIB \"$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib\" mos_tt" > $@.tmp
+	@echo ".INCLUDE \"$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/spice/sg13g2_stdcell.spice\"" >> $@.tmp
+	@echo ".PARAM lvdd=1.2" >> $@.tmp
+	@echo "* Load used by the testbenches (same mapping as in pll_cells_ihp-sg13g2.v)" >> $@.tmp
+	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
+	@echo "Ximpl Z I VDD VSS sg13g2_buf_1" >> $@.tmp
+	@echo ".ENDS" >> $@.tmp
+	@$(call update_if_changed,$@)
 
-# ngspice settings for this PDK (copied as .spiceinit next to the testbenches)
+# ngspice settings for this PDK (.spiceinit next to the testbenches)
 # The PSP models are OSDI-compiled, so ngspice needs to load them
-$(SIM_DIR)/outputs/.spiceinit: $(ADPLL_ROOT)/settings.mk
+$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
 	mkdir -p $(dir $@)
-	@echo "set num_threads=$(NGSPICE_THREADS)" > $@
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103.osdi'" >> $@
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103_nqs.osdi'" >> $@
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/r3_cmc.osdi'" >> $@
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/mosvar.osdi'" >> $@
+	@echo "set num_threads=$(NGSPICE_THREADS)" > $@.tmp
+	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103.osdi'" >> $@.tmp
+	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103_nqs.osdi'" >> $@.tmp
+	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/r3_cmc.osdi'" >> $@.tmp
+	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/mosvar.osdi'" >> $@.tmp
+	@$(call update_if_changed,$@)
 
 CELLS_SRC=$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_udp.v $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
 endif
@@ -122,10 +133,10 @@ endif
 endif
 
 # Variables that the tcl scripts read from the environment
-DOCKER_ENV=PDK PDK_ROOT ROOT_DIR SYN_DIR SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y
+DOCKER_ENV=PDK PDK_ROOT ROOT_DIR SYN_DIR SYN_OUT SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y
 DOCKER_RUN=docker run --rm -i \
 	-u $(shell id -u):$(shell id -g) -e HOME=/tmp -e MPLBACKEND=Agg \
-	-v $(ADPLL_ROOT):$(ADPLL_ROOT) \
+	-v $(ROOT_DIR):$(ROOT_DIR) \
 	$(if $(wildcard $(PDK_ROOT)),-v $(PDK_ROOT):$(PDK_ROOT)) \
 	-w $$PWD \
 	$(addprefix -e ,$(DOCKER_ENV)) \
@@ -142,8 +153,6 @@ VVP?=$(call tool,vvp)
 NGSPICE?=$(call tool,ngspice)
 # Waveform viewer for the ngspice rawfiles (view_* targets)
 WAVEVIEW?=gaw
-# Only for test_dco_noise (oscillator phase noise is not available in ngspice)
-HSPICE?=hspice
 # The post-processing scripts need numpy, scipy, matplotlib and pandas (see requirements.txt)
 PYTHON?=$(if $(filter 1,$(USE_DOCKER)),$(DOCKER_RUN) python3,$(if $(or $(filter 0,$(USE_DOCKER)),$(shell python3 -c 'import numpy, scipy, matplotlib, pandas' 2>/dev/null && echo ok)),python3,$(DOCKER_RUN) python3))
 

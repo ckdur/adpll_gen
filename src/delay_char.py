@@ -5,7 +5,7 @@
 # or, with the digital (iverilog) results:
 # python3 ../src/delay_char.py outputs/test_fine_delay.vcd.mt0 outputs/test_mid_delay.vcd.mt0 outputs/test_coarse_delay.vcd.mt0
 
-import re, sys
+import os, re, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from spice_io import meas_until_failed
@@ -72,5 +72,6 @@ plt.xlabel("Code")
 plt.ylabel("Delay (ps)")
 
 plt.tight_layout()
-plt.savefig("outputs/delay_overlap.pdf")
+# Next to the simulation results (sim/outputs/<PDK>)
+plt.savefig(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "delay_overlap.pdf"))
 plt.show()

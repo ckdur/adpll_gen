@@ -4,9 +4,9 @@
 set TOP $env(DIGTOP)
 set SYN_DIR $env(SYN_DIR)
 set SYN_SRC $env(SYN_DIG_SRC)
-set LOGS $env(SYN_DIR)/logs
-set REPORTS $env(SYN_DIR)/reports
-set OUTPUTS $env(SYN_DIR)/outputs
+set LOGS $env(SYN_OUT)/logs
+set REPORTS $env(SYN_OUT)/reports
+set OUTPUTS $env(SYN_OUT)
 set ROOT_DIR $env(ROOT_DIR)
 
 set SYN_EFF high

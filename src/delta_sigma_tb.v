@@ -65,7 +65,8 @@ module delta_sigma_tb();
                 avg = avg + (($itor(DSM_OUT)-avg) / (i+1)); // Moving average
             end
 
-            diff = abs(avg - int_avg);
+            // abs() is SystemVerilog only. Plain Verilog-2005 equivalent:
+            diff = (avg > int_avg) ? (avg - int_avg) : (int_avg - avg);
             $display("Order: %d, Average = %g, Intended average = %g, Diff = %g", order+1, avg, int_avg, diff);
         end
 
