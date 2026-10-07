@@ -55,6 +55,7 @@ update_if_changed=if cmp -s $(1).tmp $(1); then rm $(1).tmp; else mv $(1).tmp $(
 SIM_OUT=$(SIM_DIR)/outputs/$(PDK)
 SYN_OUT=$(SYN_DIR)/outputs/$(PDK)
 PNR_OUT=$(PNR_DIR)/outputs/$(PDK)
+SIGN_OUT=$(SIGN_DIR)/outputs/$(PDK)
 
 SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
 SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
@@ -82,6 +83,13 @@ $(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
 	@$(call update_if_changed,$@)
 
 CELLS_SRC=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/verilog/ics55_LLSC_H7CR.v $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/verilog/icsIOA_N55_3P3.v
+
+#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
+PDK_FILE?=none
+PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.lyt
+PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.map
+LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/lef/ics55_LLSC_H7CR_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
+GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR.gds $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/gds/ICSIOA_N55_3P3_1P6M1TM.gds
 endif
 
 ifeq ($(PDK),ihp-sg13g2)
@@ -112,6 +120,11 @@ $(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
 	@$(call update_if_changed,$@)
 
 CELLS_SRC=$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_udp.v $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
+
+#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
+PDK_FILE?=none
+PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.lyt
+PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.map
 endif
 
 export PDK
@@ -153,6 +166,8 @@ tool=$(if $(filter 1,$(USE_DOCKER)),$(DOCKER_RUN) $(1),$(if $(or $(filter 0,$(US
 
 YOSYS?=$(call tool,yosys)
 OPENROAD?=$(call tool,openroad)
+KLAYOUT?=$(call tool,klayout)
+MAGIC?=$(call tool,magic)
 STA?=$(call tool,sta)
 IVERILOG?=$(call tool,iverilog)
 VVP?=$(call tool,vvp)
