@@ -17,15 +17,18 @@ SYN_ANA_SP=$(SYN_OUT)/$(TOP).sp
 export SYN_ANA_NET
 export SYN_NET
 
+# Cells excluded by the PDK (only visible here when the PDK is installed locally)
+SYN_EXCLUDE=$(wildcard $(PDK_ROOT)/$(PDK)/libs.tech/librelane/*/synth_exclude.cells)
+
 all: $(SYN_ANA_NET) $(SYN_NET)
 digital: $(SYN_NET)
 
-$(SYN_ANA_NET): $(SYN_DIR)/tcl/synthesis_analog.tcl $(SYN_SRC)
+$(SYN_ANA_NET): $(SYN_DIR)/tcl/synthesis_analog.tcl $(SYN_DIR)/tcl/dont_use.tcl $(SYN_EXCLUDE) $(SYN_SRC)
 	mkdir -p $(SYN_OUT)
 	$(YOSYS) -h tcl $(SYN_DIR)/tcl/synthesis_analog.tcl | tee -a $(SYN_OUT)/yosys_analog.log
 	python3 $(SYN_DIR)/escape_names.py $@
 
-$(SYN_NET): $(SYN_DIR)/tcl/synthesis.tcl $(SYN_DIG_SRC)
+$(SYN_NET): $(SYN_DIR)/tcl/synthesis.tcl $(SYN_DIR)/tcl/dont_use.tcl $(SYN_EXCLUDE) $(SYN_DIG_SRC)
 	mkdir -p $(SYN_OUT)
 	$(YOSYS) -h tcl $(SYN_DIR)/tcl/synthesis.tcl | tee -a $(SYN_OUT)/yosys.log
 	python3 $(SYN_DIR)/escape_names.py $@

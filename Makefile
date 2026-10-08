@@ -1,11 +1,10 @@
-# Top-level flow: synthesis -> place & route -> GDS
+# Top-level flow: synthesis -> place & route -> signoff (GDS, DRC, LVS)
 # Variables like PDK or TOP given here (make PDK=ics55) are passed to every stage.
-# NOTE: DRC and LVS are not included yet (make -C signoff drc / lvs)
 
 PDK?=ics55
 export PDK
 
-all: gds
+all: signoff
 
 syn:
 	$(MAKE) -C syn all
@@ -16,6 +15,9 @@ pnr: syn
 gds: pnr
 	$(MAKE) -C signoff gds
 
+signoff: pnr
+	$(MAKE) -C signoff all
+
 # Each stage only cleans the outputs of the current PDK where supported
 clean:
 	$(MAKE) -C syn clean
@@ -24,4 +26,4 @@ clean:
 
 # The stages depend on each other, never run them in parallel
 .NOTPARALLEL:
-.PHONY: all syn pnr gds clean
+.PHONY: all syn pnr gds signoff clean

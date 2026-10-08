@@ -28,6 +28,7 @@ yosys -import
 ## Library setup
 ###############################################################
 source $env(ROOT_DIR)/lib/$env(PDK)_settings.tcl
+source $env(SYN_DIR)/tcl/dont_use.tcl
 
 # Prepend to all strings the -liberty
 set LIBSLIB ""
@@ -79,9 +80,9 @@ hierarchy -check
 ####################################################################################################
 ## Synthesizing to gates
 ####################################################################################################
-dfflibmap -liberty $LIBFF
+dfflibmap {*}$DONT_USE_ARGS -liberty $LIBFF
 dfflegalize
-set cmd "abc $LIBSLIB"
+set cmd "abc $DONT_USE_ARGS $LIBSLIB"
 eval $cmd
 
 splitnets

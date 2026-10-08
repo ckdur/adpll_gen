@@ -24,7 +24,7 @@ converts those results into Verilog delay models for fast digital simulations of
 
 ```sh
 # PDK is ics55 or ihp-sg13g2 (the default is set in settings.mk)
-make PDK=ics55                                 # whole flow: syn all -> pnr all -> signoff gds (no DRC/LVS yet)
+make PDK=ics55                                 # whole flow: syn all -> pnr all -> signoff (gds, KLayout DRC and LVS)
 make -C syn PDK=ics55 TOP=FINE_DELAY all gen   # synthesize + powered SPICE netlist
 make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization (also mid/coarse)
 make -C sim PDK=ics55 test_pll_injection test_sym_delay

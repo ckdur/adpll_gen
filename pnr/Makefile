@@ -22,7 +22,7 @@ export SYN_NET
 
 all: $(PNR_OUT)/$(TOP).def
 
-$(PNR_OUT)/$(TOP).def: $(SYN_ANA_NET) $(SYN_NET) $(PNR_DIR)/tcl/pnr.tcl
+$(PNR_OUT)/$(TOP).def: $(SYN_ANA_NET) $(SYN_NET) $(wildcard $(PNR_DIR)/tcl/*.tcl) $(ROOT_DIR)/lib/$(PDK)_settings.tcl
 	$(OPENROAD) -exit $(PNR_DIR)/tcl/pnr.tcl | tee -a openroad.log
 
 manual: $(SYN_ANA_NET) $(SYN_NET) $(PNR_DIR)/tcl/pnr.tcl

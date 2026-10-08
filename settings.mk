@@ -89,7 +89,11 @@ PDK_FILE?=none
 PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.lyt
 PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.map
 LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/lef/ics55_LLSC_H7CR_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
-GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR.gds $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/gds/ICSIOA_N55_3P3_1P6M1TM.gds
+# The _ecos cell LEF has the signal pins on MET2 (+ VIA1), which only the _M2 GDS has.
+# (The plain MET1-pin LEF/GDS leaves some pins without access points in OpenROAD)
+GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR_M2.gds $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/gds/ICSIOA_N55_3P3_1P6M1TM.gds
+# Cell netlists for the LVS schematic (pnr writes only the top subcircuit)
+CDLS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/cdl/ics55_LLSC_H7CR.cdl $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/cdl/ICSIOA_N55_3P3.cdl
 endif
 
 ifeq ($(PDK),ihp-sg13g2)
@@ -127,6 +131,9 @@ PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.lyt
 PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.map
 LEFS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_tech.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_stdcell.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/lef/sg13g2_io.lef
 GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/gds/sg13g2_stdcell.gds $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/gds/sg13g2_io.gds
+# Cell netlists for the LVS schematic (pnr writes only the top subcircuit)
+# No IO cells in the design (and KLayout cannot read the resistors of sg13g2_io.cdl)
+CDLS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/cdl/sg13g2_stdcell.cdl
 endif
 
 export PDK

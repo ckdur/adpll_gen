@@ -45,6 +45,17 @@ puts "Reading: $env(SYN_NET)"
 read_verilog $env(SYN_NET)
 link_design ${TOP}
 
+# Cells the PDK excludes from place & route (e.g. the ones that do not pass LVS)
+if {[info exists ::env(PNR_EXCLUDED_CELL_FILE)] && [file exists $::env(PNR_EXCLUDED_CELL_FILE)]} {
+  set fp [open $::env(PNR_EXCLUDED_CELL_FILE)]
+  set excluded [regexp -all -inline {\S+} [read $fp]]
+  close $fp
+  if {[llength $excluded] > 0} {
+    puts "\[INFO\] Excluding cells from $::env(PNR_EXCLUDED_CELL_FILE): $excluded"
+    set_dont_use $excluded
+  }
+}
+
 puts "SDC reading: ${TOP}.sdc.tcl"
 read_sdc $SRC_DIR/${TOP}.sdc.tcl
 
@@ -177,6 +188,12 @@ lassign [pos_injection [expr $balanced_x - $track*2] [expr $coarse_y+$row] 4] in
 
 write_def $OUTPUTS/${TOP}.analog.def
 
+# Well taps for the rest of the rows (the analog columns place their own). Only in PDKs with
+# tapless cells (ics55): without them the wells of the digital cells float (LVS mismatch)
+if {[info exists ::env(WELLTAP_CELL)] && $::env(FP_TAPCELL_DIST) > 0} {
+    tapcell -distance $::env(FP_TAPCELL_DIST) -tapcell_master $::env(WELLTAP_CELL) -tap_prefix TAP_
+}
+
 ####################################
 ## Power planning
 ####################################
@@ -184,6 +201,33 @@ write_def $OUTPUTS/${TOP}.analog.def
 # Copied from librelane
 source ${PNR_DIR}/tcl/io.tcl
 source ${PNR_DIR}/tcl/pdn.tcl
+
+# Rail vias: put the long enclosure along the rail on the PDN_RAIL_VIA_LAYERS of the PDK, so the
+# pads stay inside the rail (the generate rules allow both orientations)
+if {[info exists PDN_RAIL_VIA_LAYERS]} {
+  foreach via [$::block getVias] {
+    if {![$via hasParams]} { continue }
+    set p [$via getViaParams]
+    if {[$p getNumCutRows] != 1} { continue }
+    set changed 0
+    if {[[$p getTopLayer] getName] in $PDN_RAIL_VIA_LAYERS && [$p getYTopEnclosure] > [$p getXTopEnclosure]} {
+      set e [$p getYTopEnclosure]
+      $p setYTopEnclosure [$p getXTopEnclosure]
+      $p setXTopEnclosure $e
+      set changed 1
+    }
+    if {[[$p getBottomLayer] getName] in $PDN_RAIL_VIA_LAYERS && [$p getYBottomEnclosure] > [$p getXBottomEnclosure]} {
+      set e [$p getYBottomEnclosure]
+      $p setYBottomEnclosure [$p getXBottomEnclosure]
+      $p setXBottomEnclosure $e
+      set changed 1
+    }
+    if {$changed} {
+      $via setViaParams $p
+      puts "\[INFO\] Rail via [$via getName]: long enclosure along the rail"
+    }
+  }
+}
 
 ###################################
 ## Placement
@@ -282,7 +326,16 @@ source ${PNR_DIR}/tcl/drt.tcl
 #################################################
 ## Write out final files
 #################################################
-# NOTE: Cannot extract parasitics
+# The physical views go first: extract_parasitics re-orders the wires and drops the
+# min-area patches of the detailed routing (DRC violations in the GDS)
+write_db $OUTPUTS/${TOP}.final.db
+write_verilog $OUTPUTS/${TOP}.v
+write_verilog -include_pwr_gnd $OUTPUTS/${TOP}_pg.v
+write_def $OUTPUTS/${TOP}.def
+write_abstract_lef $OUTPUTS/${TOP}.lef
+# -include_fillers: the decaps of some PDKs are CLASS CORE SPACER (sg13g2_decap_*), LVS needs them
+write_cdl -include_fillers -masters ${CDLS} $OUTPUTS/${TOP}.cdl
+
 set rcx_flags ""
 if { !$::env(RCX_MERGE_VIA_WIRE_RES) } {
     set rcx_flags "-no_merge_via_res"
@@ -292,13 +345,6 @@ extract_parasitics $rcx_flags\
     -ext_model_file $RCX_RULES\
     -lef_res
 
-write_db $OUTPUTS/${TOP}.final.db
-
-write_verilog $OUTPUTS/${TOP}.v
-write_verilog -include_pwr_gnd $OUTPUTS/${TOP}_pg.v
-write_def $OUTPUTS/${TOP}.def
-write_abstract_lef $OUTPUTS/${TOP}.lef
 write_timing_model $OUTPUTS/${TOP}.lib
-write_cdl -masters ${CDLS} $OUTPUTS/${TOP}.cdl
 write_spef $OUTPUTS/${TOP}.spef
 write_sdf -include_typ -divider . $OUTPUTS/${TOP}.sdf
