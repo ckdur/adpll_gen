@@ -24,6 +24,7 @@ converts those results into Verilog delay models for fast digital simulations of
 
 ```sh
 # PDK is ics55 or ihp-sg13g2 (the default is set in settings.mk)
+make PDK=ics55                                 # whole flow: syn all -> pnr all -> signoff gds (no DRC/LVS yet)
 make -C syn PDK=ics55 TOP=FINE_DELAY all gen   # synthesize + powered SPICE netlist
 make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization (also mid/coarse)
 make -C sim PDK=ics55 test_pll_injection test_sym_delay
@@ -84,7 +85,8 @@ alone shift the edges ~80 fs). `src/dco_shape.ipynb` reads `sim/outputs/<PDK>/te
 - `models.inc` and `.spiceinit` depend on `settings.mk` but are only replaced when their content changes,
   so editing `settings.mk` does not re-run the simulations. Editing `syn/Makefile` does re-synthesize
   everything (the netlists depend on it).
-- Recipes run with `bash -o pipefail`, so a tool failing behind `| tee` fails the target.
+- Recipes run in bash with `pipefail` (through `SHELLOPTS`; `.SHELLFLAGS` does not exist in make 3.81, the
+  macOS one), so a tool failing behind `| tee` fails the target.
 - Long runs: the full transistor-level `test_pll` takes ~27 min per 200 ns of simulated time in ngspice.
 
 ## Known issues

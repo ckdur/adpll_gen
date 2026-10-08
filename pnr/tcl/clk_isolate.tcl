@@ -77,6 +77,18 @@ proc protect_analog {} {
   foreach net [$::block getNets] {
     if {[string match pll_ana_* [$net getName]]} {
       lappend nets [$net getName]
+      continue
+    }
+    # Also the nets crossing into the analog cells (e.g. DCO_EN): the resizer cannot buffer
+    # them because their analog loads are dont_touch (RSZ-3006)
+    if {[$net getSigType] == "POWER" || [$net getSigType] == "GROUND"} {
+      continue
+    }
+    foreach iterm [$net getITerms] {
+      if {[string match pll_ana_* [[$iterm getInst] getName]]} {
+        lappend nets [$net getName]
+        break
+      }
     }
   }
   set_dont_touch [get_cells $insts]

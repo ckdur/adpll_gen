@@ -125,6 +125,8 @@ CELLS_SRC=$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_udp.v $(
 PDK_FILE?=none
 PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.lyt
 PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.map
+LEFS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_tech.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_stdcell.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/lef/sg13g2_io.lef
+GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/gds/sg13g2_stdcell.gds $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/gds/sg13g2_io.gds
 endif
 
 export PDK
@@ -133,8 +135,9 @@ export PDK_ROOT
 #######################################################
 # Tools
 # Fail a recipe when a tool fails, even if it is piped through tee
+# (bash takes the options from SHELLOPTS. .SHELLFLAGS does not exist in make 3.81, the one of macOS)
 SHELL=/bin/bash
-.SHELLFLAGS=-o pipefail -c
+export SHELLOPTS:=$(if $(SHELLOPTS),$(SHELLOPTS):)pipefail
 
 # Each tool runs natively if it is installed and the PDK is available locally.
 # Otherwise it runs inside the docker image (e.g. macOS has no openroad).

@@ -72,8 +72,18 @@ set ::tech [[::ord::get_db] getTech]
 set ::block [$::chip getBlock]
 set dbu [$tech getDbUnitsPerMicron]
 
-# TODO: Is there a way to extract from a command?
-set siteobj [[[::ord::get_db] findLib ${techdbname}] findSite $::env(PLACE_SITE)]
+# Look for the placement site in every library: it is in the tech LEF in some PDKs (ics55)
+# and in the standard cells LEF in others (ihp-sg13g2)
+set siteobj "NULL"
+foreach lib [[::ord::get_db] getLibs] {
+  set siteobj [$lib findSite $::env(PLACE_SITE)]
+  if {$siteobj != "NULL"} {
+    break
+  }
+}
+if {$siteobj == "NULL"} {
+  error "Site $::env(PLACE_SITE) not found in any LEF"
+}
 set row   [::ord::dbu_to_microns [$siteobj getHeight]]
 set track [::ord::dbu_to_microns [$siteobj getWidth]]
 set pitch [expr 32*$row]
@@ -93,7 +103,7 @@ if {[info exists env(X)] && $::env(X) != ""} {
 
 # Only add the global connection to the digitals
 add_global_connection -net $::env(VDD_NET) -inst_pattern digital/.* -pin_pattern {^VDD$} -power
-add_global_connection -net $::env(VDD_NET) -inst_pattern digital/.* -pin_pattern {^VSS$} -ground
+add_global_connection -net $::env(GND_NET) -inst_pattern digital/.* -pin_pattern {^VSS$} -ground
 
 global_connect -verbose
 
@@ -196,7 +206,8 @@ source ${PNR_DIR}/tcl/dpl.tcl
 
 set_global_routing_layer_adjustment * $::env(GRT_ADJUSTMENT)
 
-set array [split $::env(GRT_LAYER_ADJUSTMENTS) " "]
+# Space (ics55) or comma (ihp-sg13g2) separated, depending on the PDK config
+set array [regexp -all -inline {[^, ]+} $::env(GRT_LAYER_ADJUSTMENTS)]
 
 set layer_names [list]
 set layers [$::tech getLayers]

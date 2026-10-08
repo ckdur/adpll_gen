@@ -22,6 +22,14 @@ set RCX_RULES "${PDK_ROOT}/ihp-sg13g2/libs.tech/librelane/openrcx/IHP_rcx_patter
 
 set techsite "CoreSite"
 set techname "ihp-sg13g2"
+set techdbname "sg13g2_tech"
+set libdbname "sg13g2_stdcell"
+
+# Not defined by the librelane config of this PDK (they are in ics55)
+set ::env(VDD_NET) "VDD"
+set ::env(GND_NET) "VSS"
+# Needed by the core ring of pnr.tcl
+set ::env(PDN_MULTILAYER) 1
 
 set BUFCells [list sg13g2_buf_1 sg13g2_buf_16 sg13g2_buf_2 sg13g2_buf_4 sg13g2_buf_8]
 set INVCells [list sg13g2_inv_1 sg13g2_inv_16 sg13g2_inv_2 sg13g2_inv_4 sg13g2_inv_8]
@@ -51,3 +59,16 @@ set ::env(PL_SKIP_INITIAL_PLACEMENT) 0
 set ::env(PL_WIRE_LENGTH_COEF) 0.25
 set ::env(PL_MAX_DISPLACEMENT_X) 500
 set ::env(PL_MAX_DISPLACEMENT_Y) 100
+set ::env(GRT_ADJUSTMENT) 0.3
+set ::env(SET_RC_VERBOSE) 0
+set ::env(CLOCK_NET) "REF"
+set ::env(CTS_DISTANCE_BETWEEN_BUFFERS) 0
+set ::env(CTS_CLK_MAX_WIRE_LENGTH) 0
+set ::env(DRT_THREADS) 1
+set ::env(DRT_SAVE_SNAPSHOTS) 0
+set ::env(DRT_OPT_ITERS) 64
+set ::env(RCX_MERGE_VIA_WIRE_RES) 1
+# This PDK defines DIODE_CELL, so the detailed routing repairs antennas (librelane defaults)
+set ::env(DRT_ANTENNA_REPAIR_ITERS) 3
+set ::env(DRT_ANTENNA_REPAIR_JUMPER_ONLY) 0
+set ::env(GRT_ANTENNA_REPAIR_MARGIN) 10
