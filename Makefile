@@ -1,5 +1,6 @@
 # Top-level flow: synthesis -> place & route -> signoff (GDS, DRC, LVS)
 # Variables like PDK or TOP given here (make PDK=ics55) are passed to every stage.
+# In ics55, SCL selects the standard cell library (make PDK=ics55 SCL=ICsprout55_9TSVT_basic).
 
 PDK?=ics55
 export PDK

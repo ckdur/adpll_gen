@@ -61,19 +61,11 @@ read_sdc $SRC_DIR/${TOP}.sdc.tcl
 
 unset_propagated_clock [all_clocks]
 
-if {![file exists outputs/${PDK}]} {
-  file mkdir ${PNR_DIR}/outputs
-  file mkdir ${PNR_DIR}/outputs/${PDK}
-  puts "Creating directory outputs"
-}
-if {![file exists reports/${PDK}]} {
-  file mkdir ${PNR_DIR}/reports
-  file mkdir ${PNR_DIR}/reports/${PDK}
-  puts "Creating directory reports"
-}
-
-set OUTPUTS ${PNR_DIR}/outputs/${PDK}
-set REPORTS ${PNR_DIR}/reports/${PDK}
+# One folder per technology (PDK + standard cell library), see TECH in settings.mk
+set OUTPUTS $env(PNR_OUT)
+set REPORTS ${PNR_DIR}/reports/$env(TECH)
+file mkdir $OUTPUTS
+file mkdir $REPORTS
 
 ####################################
 ## Floor Plan

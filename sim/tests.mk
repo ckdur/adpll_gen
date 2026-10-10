@@ -239,7 +239,8 @@ $(SIM_OUT)/%.sp: $(SYN_OUT)/%.sp
 $(SYN_OUT)/%.sp: $(SYN_OUT)/%_net.v
 	make -C $(SYN_DIR) TOP=$* gen
 
-$(SYN_OUT)/%_net.v: $(SYN_DIR)/Makefile
+# Also on the sources (RTL and the PLL_CELL_* map of the PDK), as the netlists of syn/Makefile
+$(SYN_OUT)/%_net.v: $(SYN_DIR)/Makefile $(SYN_SRC)
 	make -C $(SYN_DIR) TOP=$* all
 	make -C $(SYN_DIR) TOP=$* sdf
 

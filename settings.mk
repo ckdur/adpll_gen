@@ -51,27 +51,62 @@ PDK?=ihp-sg13g2
 # does not re-run every simulation
 update_if_changed=if cmp -s $(1).tmp $(1); then rm $(1).tmp; else mv $(1).tmp $(1); fi
 
-# Every technology has its own outputs (SIM_DIR and SYN_DIR are defined by the including Makefile)
-SIM_OUT=$(SIM_DIR)/outputs/$(PDK)
-SYN_OUT=$(SYN_DIR)/outputs/$(PDK)
-PNR_OUT=$(PNR_DIR)/outputs/$(PDK)
-SIGN_OUT=$(SIGN_DIR)/outputs/$(PDK)
+# Standard cell library, only selectable in ics55:
+#   ics55_LLSC_H7CR         7-track public library (default)
+#   ICsprout55_9TSVT_basic  9-track private library (installed with the PDK when available)
+ifeq ($(PDK),ics55)
+SCL?=ics55_LLSC_H7CR
+SCL_DEFAULT=ics55_LLSC_H7CR
+# The LibreLane configs of the PDK read it from the environment
+export STD_CELL_LIBRARY=$(SCL)
+endif
+
+# Every technology has its own outputs (SIM_DIR and SYN_DIR are defined by the including Makefile).
+# A standard cell library other than the default one gets its own folder: outputs/<PDK>-<SCL>
+TECH=$(PDK)$(if $(filter-out $(SCL_DEFAULT),$(SCL)),-$(SCL))
+export TECH
+SIM_OUT=$(SIM_DIR)/outputs/$(TECH)
+SYN_OUT=$(SYN_DIR)/outputs/$(TECH)
+PNR_OUT=$(PNR_DIR)/outputs/$(TECH)
+SIGN_OUT=$(SIGN_DIR)/outputs/$(TECH)
 
 SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
 SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
 
 ifeq ($(PDK),ics55)
 PDK_ROOT?=$(HOME)/Documents/SymbioticEDA/ics55/icsprout55-pdk
+SCL_DIR=$(PDK_ROOT)/$(PDK)/libs.ref/$(SCL)
+IO_DIR=$(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013
+
+ifeq ($(SCL),ics55_LLSC_H7CR)
 SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ics55.v
+# Cell SPICE subcircuit and the instance line of the testbench load (PLL_CELL_BUFFX0)
+SCL_SPICE=$(SCL_DIR)/spice/$(SCL).spice
+SCL_BUFFX0=Ximpl I VDD VSS Z BUFX0P5H7R
+# The _ecos cell LEF has the signal pins on MET2 (+ VIA1), which only the _M2 GDS has.
+# (The plain MET1-pin LEF/GDS leaves some pins without access points in OpenROAD)
+SCL_LEF=$(SCL_DIR)/lef/$(SCL)_ecos.lef
+SCL_GDS=$(SCL_DIR)/gds/$(SCL)_M2.gds
+else ifeq ($(SCL),ICsprout55_9TSVT_basic)
+SYN_SRC+= $(ROOT_DIR)/src/pll_cells_$(SCL).v
+# Every cell has the well bias pins VNW / VPW, tied to the supplies here
+SCL_SPICE=$(SCL_DIR)/spice/$(SCL).spice
+SCL_BUFFX0=Ximpl I VDD VSS Z VDD VSS BUFX0P5_9TSVT
+# A single cell LEF / GDS pair, with the signal pins on MET1
+SCL_LEF=$(SCL_DIR)/lef/$(SCL).lef
+SCL_GDS=$(SCL_DIR)/gds/$(SCL).gds
+else
+$(error Unknown standard cell library SCL=$(SCL) for $(PDK))
+endif
 
 $(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
 	mkdir -p $(dir $@)
 	@echo ".LIB \"$(PDK_ROOT)/$(PDK)/libs.tech/ngspice/ICsprout_55LLULP1225_V1p1_hsp.lib\" tt_mos" > $@.tmp
-	@echo ".INCLUDE \"$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/spice/ics55_LLSC_H7CR.spice\"" >> $@.tmp
+	@echo ".INCLUDE \"$(SCL_SPICE)\"" >> $@.tmp
 	@echo ".PARAM lvdd=1.2" >> $@.tmp
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ics55.v)" >> $@.tmp
+	@echo "* Load used by the testbenches (same mapping as in the pll_cells_*.v of $(SCL))" >> $@.tmp
 	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
-	@echo "Ximpl I VDD VSS Z BUFX0P5H7R" >> $@.tmp
+	@echo "$(SCL_BUFFX0)" >> $@.tmp
 	@echo ".ENDS" >> $@.tmp
 	@$(call update_if_changed,$@)
 
@@ -82,18 +117,16 @@ $(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
 	@echo "set num_threads=$(NGSPICE_THREADS)" >> $@.tmp
 	@$(call update_if_changed,$@)
 
-CELLS_SRC=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/verilog/ics55_LLSC_H7CR.v $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/verilog/icsIOA_N55_3P3.v
+CELLS_SRC=$(SCL_DIR)/verilog/$(SCL).v $(IO_DIR)/verilog/icsIOA_N55_3P3.v
 
 #PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
 PDK_FILE?=none
 PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.lyt
 PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.map
-LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/lef/ics55_LLSC_H7CR_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
-# The _ecos cell LEF has the signal pins on MET2 (+ VIA1), which only the _M2 GDS has.
-# (The plain MET1-pin LEF/GDS leaves some pins without access points in OpenROAD)
-GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR_M2.gds $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/gds/ICSIOA_N55_3P3_1P6M1TM.gds
+LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(SCL_LEF) $(IO_DIR)/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
+GDSS?=$(SCL_GDS) $(IO_DIR)/gds/ICSIOA_N55_3P3_1P6M1TM.gds
 # Cell netlists for the LVS schematic (pnr writes only the top subcircuit)
-CDLS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/cdl/ics55_LLSC_H7CR.cdl $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/cdl/ICSIOA_N55_3P3.cdl
+CDLS?=$(SCL_DIR)/cdl/$(SCL).cdl $(IO_DIR)/cdl/ICSIOA_N55_3P3.cdl
 endif
 
 ifeq ($(PDK),ihp-sg13g2)
@@ -160,7 +193,7 @@ endif
 endif
 
 # Variables that the tcl scripts read from the environment
-DOCKER_ENV=PDK PDK_ROOT ROOT_DIR SYN_DIR SYN_OUT SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y SRC_DIR PNR_DIR PX PY PR
+DOCKER_ENV=PDK PDK_ROOT STD_CELL_LIBRARY PNR_OUT ROOT_DIR SYN_DIR SYN_OUT SYN_SRC TOP DIGTOP SYN_DIG_SRC SYN_ANA_NET SYN_NET TECH X Y SRC_DIR PNR_DIR PX PY PR
 DOCKER_RUN=docker run --rm -i \
 	-u $(shell id -u):$(shell id -g) -e HOME=/tmp -e MPLBACKEND=Agg \
 	--net=host \

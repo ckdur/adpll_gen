@@ -45,8 +45,9 @@ foreach {supply sigtype} {VDD POWER VSS GROUND} {
     odb::dbBTerm_create $net $supply
   }
 }
-add_global_connection -net VDD -pin_pattern {^VDD$} -power
-add_global_connection -net VSS -pin_pattern {^VSS$} -ground
+# The well bias pins (VNW / VPW) of some libraries go to the supplies too
+add_global_connection -net VDD -pin_pattern {^(VDD|VNW)$} -power
+add_global_connection -net VSS -pin_pattern {^(VSS|VPW)$} -ground
 global_connect
 
 set OUTPUTS $env(SYN_OUT)

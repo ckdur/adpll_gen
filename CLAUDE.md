@@ -13,18 +13,24 @@ converts those results into Verilog delay models for fast digital simulations of
 
 - `settings.mk`: shared by `sim/` and `syn/`. PDK selection, sources, tools (native or docker), per-PDK rules.
 - `lib/<PDK>_settings.tcl`: liberty/LEF/CDL/SPICE paths of each PDK (read by the tcl scripts).
+- ics55 has two standard cell libraries, selected with `SCL` (exported as `STD_CELL_LIBRARY`, which the
+  LibreLane configs of the PDK read): `ics55_LLSC_H7CR` (7-track, default) and `ICsprout55_9TSVT_basic`
+  (private 9-track, cell map `src/pll_cells_ICsprout55_9TSVT_basic.v`). Its cells have well pins `VNW`/`VPW`,
+  tied to VDD/VSS by global connections (`SCL_POWER_PINS`/`SCL_GROUND_PINS`, `syn/tcl/netlist.tcl`).
 - `src/`: RTL, testbenches (`*_tb.v`, `test_*.v`, `test_*.sp`) and the Python post-processing.
   - `pll_cells_<PDK>.v`: maps `PLL_CELL_*` to the standard cells of the PDK. The `` `ifdef YOSYS `` section
     declares those standard cells as blackboxes for synthesis.
 - `syn/`: `Makefile`, `tcl/` (yosys, openroad, sta scripts), `escape_names.py`, `spice_ports.py`.
 - `sim/`: `Makefile` and `tests.mk` (all the simulation targets).
-- Outputs are per PDK: `syn/outputs/<PDK>/` and `sim/outputs/<PDK>/` (`SYN_OUT`, `SIM_OUT`).
+- Outputs are per technology (`TECH`): `syn/outputs/<PDK>/` and `sim/outputs/<PDK>/` (`SYN_OUT`, `SIM_OUT`, also
+  `pnr/` and `signoff/`), or `<PDK>-<SCL>` when the library is not the default one.
 
 ## Commands
 
 ```sh
 # PDK is ics55 or ihp-sg13g2 (the default is set in settings.mk)
 make PDK=ics55                                 # whole flow: syn all -> pnr all -> signoff (gds, KLayout DRC and LVS)
+make PDK=ics55 SCL=ICsprout55_9TSVT_basic      # the same with the private 9-track library
 make -C syn PDK=ics55 TOP=FINE_DELAY all gen   # synthesize + powered SPICE netlist
 make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization (also mid/coarse)
 make -C sim PDK=ics55 test_pll_injection test_sym_delay
@@ -55,6 +61,8 @@ with the repo and the PDK mounted at the same absolute paths. Force with `USE_DO
   whitespace after them.
 - The netlists are flattened, so internal nodes are like `xpll.pll_dig/flock_cnt_0_` or `xpll.pll_ana_INJ_WIN`
   (see `src/test_pll_tran.sp`), not the original hierarchy.
+- The dynamic loads (`PLL_CELL_NAND3X*`) need `A0` on the NMOS next to VSS, or the fine/mid delays
+  decrease with the code. Check the stack order in the CDL when mapping a new library (H7R: `A`, 9T: `C`).
 - `PLL_CELL_BUFFX0` (testbench loads) is defined per PDK in the generated `models.inc`, together with the
   model `.LIB` and the standard-cell SPICE include.
 

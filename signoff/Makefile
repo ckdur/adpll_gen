@@ -5,7 +5,7 @@ SYN_DIR=$(abspath ../syn)
 SIGN_DIR=$(abspath .)
 include $(PRJ_DIR)/settings.mk
 
-SIGN_REP=$(SIGN_DIR)/reports/$(PDK)
+SIGN_REP=$(SIGN_DIR)/reports/$(TECH)
 GDS=$(SIGN_OUT)/$(TOP).gds
 export GDS
 SPICE=$(SIGN_OUT)/$(TOP).spice

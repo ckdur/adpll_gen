@@ -16,6 +16,7 @@ export PX
 export PY
 export PR
 export TECH
+export PNR_OUT
 export PDK_ROOT
 export SYN_ANA_NET
 export SYN_NET
