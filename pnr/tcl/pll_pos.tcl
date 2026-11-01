@@ -168,6 +168,18 @@ proc pos_injection {stx sty n} {
       set y [expr $y + $dir*$sy]
     }
   }
+  # Extra buffers before INJ_EDGE (EDGE_EXTRA = 3 in injection.v)
+  for {set i 0} {$i < 3} {incr i} {
+    place_tap $inj/tap_edge_${i} $x $y
+    place_fixed $inj/edgestage_${i}_del_1_impl [expr $x+$well_w] $y
+    set y [expr $y + $dir*$sy]
+  }
+  # Delay line of the SS-BBPD capture clock (BBPD_CK, CK_NDELS = 2*n buffers)
+  for {set i 0} {$i < 2*$n} {incr i} {
+    place_tap $inj/tap_ck_${i} $x $y
+    place_fixed $inj/ckstage_${i}_del_3_impl [expr $x+$well_w] $y
+    set y [expr $y + $dir*$sy]
+  }
   place_tap $inj/tap_nor $x $y
   place_fixed $inj/cmp_nor_cmp_impl [expr $x+$well_w] $y
   set y [expr $y + $dir*$sy]

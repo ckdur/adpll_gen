@@ -18,11 +18,11 @@ def convert_simulation_to_verilog(fil, name):
         v = values[i]
         iv = int(v * 1e15)
         if i == 0:
-            str = str + (f"        if(MUX[{i}] == 1'b0) #({iv}); // delay = {v}\n")
+            str = str + (f"            if(m[{i}] == 1'b0) dly = {iv}; // delay = {v}\n")
         elif i != (nvalues-1):
-            str = str + (f"        else if(MUX[{i}] == 1'b0) #({iv}); // delay = {v}\n")
+            str = str + (f"            else if(m[{i}] == 1'b0) dly = {iv}; // delay = {v}\n")
         else:
-            str = str + (f"        else #({iv}); // delay = {v}\n")
+            str = str + (f"            else dly = {iv}; // delay = {v}\n")
 
     return str
 
@@ -42,11 +42,13 @@ module sim_delay_fine #(
     input IN,
     output reg OUT
 );
+    // Transport delay (non-blocking), with the delay of the code at the time of the input event
+    function integer dly(input [NDELS-1:0] m);
+        begin
+{fine_str}        end
+    endfunction
     initial OUT = 1'b0;
-    always @(IN) begin
-{fine_str}
-        OUT = IN;
-    end
+    always @(IN) OUT <= #(dly(MUX)) IN;
 endmodule
 
 module sim_delay_mid #(
@@ -57,11 +59,13 @@ module sim_delay_mid #(
     input IN,
     output reg OUT
 );
+    // Transport delay (non-blocking), with the delay of the code at the time of the input event
+    function integer dly(input [NDELS-1:0] m);
+        begin
+{mid_str}        end
+    endfunction
     initial OUT = 1'b0;
-    always @(IN) begin
-{mid_str}
-        OUT = IN;
-    end
+    always @(IN) OUT <= #(dly(MUX)) IN;
 endmodule
 
 module sim_delay_coarse #(
@@ -72,11 +76,13 @@ module sim_delay_coarse #(
     input IN,
     output reg OUT
 );
+    // Transport delay (non-blocking), with the delay of the code at the time of the input event
+    function integer dly(input [NDELS-1:0] m);
+        begin
+{coarse_str}        end
+    endfunction
     initial OUT = 1'b0;
-    always @(IN) begin
-{coarse_str}
-        OUT = IN;
-    end
+    always @(IN) OUT <= #(dly(MUX)) IN;
 endmodule
 """
 

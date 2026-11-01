@@ -1,7 +1,7 @@
 # Delay characterization tests
 test_fine_delay: $(SIM_OUT)/test_fine_delay.raw
 
-$(SIM_OUT)/test_fine_delay.raw: $(SIM_OUT)/FINE_DELAY.sp $(SRC_DIR)/test_fine_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_fine_delay.raw: $(SIM_OUT)/FINE_DELAY.sp $(SRC_DIR)/test_fine_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_fine_delay.sp $(SIM_OUT)/test_fine_delay.sp
 	cp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/measure_delay.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_fine_delay.log test_fine_delay.sp < /dev/null
@@ -11,7 +11,7 @@ view_test_fine_delay: $(SIM_OUT)/test_fine_delay.raw
 
 test_mid_delay: $(SIM_OUT)/test_mid_delay.raw
 
-$(SIM_OUT)/test_mid_delay.raw: $(SIM_OUT)/MID_DELAY.sp $(SRC_DIR)/test_mid_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_mid_delay.raw: $(SIM_OUT)/MID_DELAY.sp $(SRC_DIR)/test_mid_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_mid_delay.sp $(SIM_OUT)/test_mid_delay.sp
 	cp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/measure_delay.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_mid_delay.log test_mid_delay.sp < /dev/null
@@ -21,7 +21,7 @@ view_test_mid_delay: $(SIM_OUT)/test_mid_delay.raw
 
 test_coarse_delay: $(SIM_OUT)/test_coarse_delay.raw
 
-$(SIM_OUT)/test_coarse_delay.raw: $(SIM_OUT)/COARSE_DELAY.sp $(SRC_DIR)/test_coarse_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_coarse_delay.raw: $(SIM_OUT)/COARSE_DELAY.sp $(SRC_DIR)/test_coarse_delay.sp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_coarse_delay.sp $(SIM_OUT)/test_coarse_delay.sp
 	cp $(SRC_DIR)/measure_delay.sp $(SIM_OUT)/measure_delay.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_coarse_delay.log test_coarse_delay.sp < /dev/null
@@ -69,7 +69,7 @@ view_test_coarse_delay_digital: $(SIM_OUT)/test_coarse_delay.vcd
 # PLL injection test
 test_pll_injection: $(SIM_OUT)/test_pll_injection.raw
 
-$(SIM_OUT)/test_pll_injection.raw: $(SIM_OUT)/PLL_INJECTION.sp $(SRC_DIR)/test_pll_injection.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_pll_injection.raw: $(SIM_OUT)/PLL_INJECTION.sp $(SRC_DIR)/test_pll_injection.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_pll_injection.sp $(SIM_OUT)/test_pll_injection.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_pll_injection.log test_pll_injection.sp < /dev/null
 
@@ -79,7 +79,7 @@ view_test_pll_injection: $(SIM_OUT)/test_pll_injection.raw
 # Symmetrical circuit delay test
 test_sym_delay: $(SIM_OUT)/test_sym_delay.raw
 
-$(SIM_OUT)/test_sym_delay.raw: $(SIM_OUT)/PLL_SYM.sp $(SRC_DIR)/test_sym_delay.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_sym_delay.raw: $(SIM_OUT)/PLL_SYM.sp $(SRC_DIR)/test_sym_delay.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_sym_delay.sp $(SIM_OUT)/test_sym_delay.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_sym_delay.log test_sym_delay.sp < /dev/null
 
@@ -90,7 +90,7 @@ view_test_sym_delay: $(SIM_OUT)/test_sym_delay.raw
 test_dco: $(SIM_OUT)/test_dco_tran.raw
 	$(PYTHON) $(SRC_DIR)/test_dco_get_stable_time.py $(SIM_OUT)/test_dco_tran.raw
 
-$(SIM_OUT)/test_dco_tran.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/test_dco_tran.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_dco_tran.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/test_dco_tran.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_dco.sp $(SIM_OUT)/test_dco.sp
 	cp $(SRC_DIR)/test_dco_tran.sp $(SIM_OUT)/test_dco_tran.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_dco_tran.log test_dco_tran.sp < /dev/null
@@ -114,7 +114,7 @@ test_dco_noise: $(SIM_OUT)/test_dco_noise.csv
 view_test_dco_noise: $(SIM_OUT)/test_dco_noise.csv
 	open $(SIM_OUT)/test_dco_noise.pdf 2>/dev/null || xdg-open $(SIM_OUT)/test_dco_noise.pdf
 
-$(SIM_OUT)/test_dco_isf_wave.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/create_isf.py $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_dco_isf_wave.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/create_isf.py $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_dco.sp $(SIM_OUT)/test_dco.sp
 	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/create_isf.py wave --twarm $(ISF_TWARM)
 	cd $(SIM_OUT) && $(NGSPICE) -o test_dco_isf_wave.log test_dco_isf_wave.sp < /dev/null
@@ -132,7 +132,7 @@ $(SIM_OUT)/test_dco_noise.csv: $(SIM_OUT)/isf_done $(SRC_DIR)/isf_phase_noise.py
 # Main PLL test
 test_pll: $(SIM_OUT)/test_pll_tran.raw
 
-$(SIM_OUT)/test_pll_tran.raw: $(SIM_OUT)/pll.sp $(SRC_DIR)/test_pll_tran.sp $(SRC_DIR)/pll_inst_declr.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_pll_tran.raw: $(SIM_OUT)/pll.sp $(SRC_DIR)/test_pll_tran.sp $(SRC_DIR)/pll_inst_declr.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/test_pll.sp
 	cp $(SRC_DIR)/test_pll_tran.sp $(SIM_OUT)/test_pll_tran.sp
 	cp $(SRC_DIR)/pll_inst_declr.sp $(SIM_OUT)/pll_inst_declr.sp
@@ -147,13 +147,13 @@ test_pll_noise: $(SIM_OUT)/test_pll_noise.raw $(SRC_DIR)/test_pll_plot_phase_noi
 view_test_pll_noise: $(SIM_OUT)/test_pll_noise.raw $(SRC_DIR)/test_pll_plot_phase_noise.py
 	$(WAVEVIEW) $(SIM_OUT)/test_pll_noise.raw
 
-$(SIM_OUT)/test_pll_noise.raw: $(SIM_OUT)/pll.sp $(SRC_DIR)/test_pll_noise.sp $(SRC_DIR)/pll_inst_declr.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+$(SIM_OUT)/test_pll_noise.raw: $(SIM_OUT)/pll.sp $(SRC_DIR)/test_pll_noise.sp $(SRC_DIR)/pll_inst_declr.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/test_pll.sp
 	cp $(SRC_DIR)/test_pll_noise.sp $(SIM_OUT)/test_pll_noise.sp
 	cp $(SRC_DIR)/pll_inst_declr.sp $(SIM_OUT)/pll_inst_declr.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_pll_noise.log test_pll_noise.sp < /dev/null
 
-test_pll_rcx: $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp.pll.pxi $(PRJ_DIR)/src/pll_inst_declr_xrc.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc $(SIM_OUT)/.spiceinit
+test_pll_rcx: $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp.pll.pxi $(PRJ_DIR)/src/pll_inst_declr_xrc.sp $(SRC_DIR)/test_pll.sp $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp $(SIM_OUT)/pll.sp
 	cp $(PRJ_DIR)/ver/rcx/rundir/xrc_lay.dist.sp.pll.pxi $(SIM_OUT)/xrc_lay.dist.sp.pll.pxi
 	cp $(PRJ_DIR)/src/pll_inst_declr_xrc.sp $(SIM_OUT)/pll_inst_declr.sp
@@ -214,23 +214,41 @@ $(SIM_OUT)/pll_fine_test.vcd: $(SRC_DIR)/pll_fine_test.v $(SRC_DIR)/pll_analog.v
 	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o a.out -D SIMULATION=1 $^ && $(VVP) a.out
 
 # Main PLL RTL simulation (pre and post-synthesis)
+# The analog blocks use the delay models made from the ngspice characterizations (sim_*.v).
+# test_pll_digital: no injection. test_pll_digital_inj: INJ_EN=1 from the start (the injection
+# becomes active after LOCKED). Both check that OUT has no glitches after the lock (PASS/FAIL), and
+# write the edges of OUT/REF to test_pll[_inj]_edges.txt for the design notebook.
+PLL_DIG_SIM_SRC=$(SRC_DIR)/pll_test.v $(SRC_DIR)/pll.v $(SRC_DIR)/pll_analog.v $(SIM_OUT)/sim_injection.v $(SRC_DIR)/il_dco.v $(SIM_OUT)/sim_dco.v $(SIM_OUT)/sim_sym.v $(SRC_DIR)/sim_SSBBPD.v $(SRC_DIR)/conf_div.v
+PLL_DIG_RTL_SRC=$(SRC_DIR)/pll_logic.v $(SRC_DIR)/digital_loop_filter.v $(SRC_DIR)/term_decoder.v $(SRC_DIR)/freq_lock.v $(SRC_DIR)/fix_div.v $(SRC_DIR)/delta_sigma.v
+
 test_pll_digital: $(SIM_OUT)/test_pll.vcd
+test_pll_digital_inj: $(SIM_OUT)/test_pll_inj.vcd
 
 view_test_pll_digital: $(SIM_OUT)/test_pll.vcd
 	gtkwave $(SIM_OUT)/test_pll.vcd
 
-$(SIM_OUT)/test_pll.vcd: $(SRC_DIR)/pll_test.v $(SRC_DIR)/pll.v $(SRC_DIR)/pll_logic.v $(SRC_DIR)/pll_analog.v $(SIM_OUT)/sim_injection.v $(SRC_DIR)/il_dco.v $(SIM_OUT)/sim_dco.v $(SIM_OUT)/sim_sym.v $(SRC_DIR)/sim_SSBBPD.v $(SRC_DIR)/digital_loop_filter.v $(SRC_DIR)/term_decoder.v $(SRC_DIR)/freq_lock.v $(SRC_DIR)/conf_div.v $(SRC_DIR)/fix_div.v
+view_test_pll_digital_inj: $(SIM_OUT)/test_pll_inj.vcd
+	gtkwave $(SIM_OUT)/test_pll_inj.vcd
+
+$(SIM_OUT)/test_pll.vcd: $(PLL_DIG_SIM_SRC) $(PLL_DIG_RTL_SRC)
 	mkdir -p $(SIM_OUT)
-	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o a.out -D SIMULATION=1 $^ && $(VVP) a.out
+	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o test_pll.out -D SIMULATION=1 $^ && $(VVP) -n test_pll.out | tee test_pll.txt
+	grep -q PASS $(SIM_OUT)/test_pll.txt
+
+$(SIM_OUT)/test_pll_inj.vcd: $(PLL_DIG_SIM_SRC) $(PLL_DIG_RTL_SRC)
+	mkdir -p $(SIM_OUT)
+	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o test_pll_inj.out -D SIMULATION=1 -D INJ_TEST=1 $^ && $(VVP) -n test_pll_inj.out | tee test_pll_inj.txt
+	grep -q PASS $(SIM_OUT)/test_pll_inj.txt
 
 test_pll_digital_postsyn: $(SIM_OUT)/test_pll_postsyn.vcd
 
 view_test_pll_digital_postsyn: $(SIM_OUT)/test_pll_postsyn.vcd
 	gtkwave $(SIM_OUT)/test_pll_postsyn.vcd
 
-$(SIM_OUT)/test_pll_postsyn.vcd: $(CELLS_SRC) $(SRC_DIR)/pll_test.v $(SRC_DIR)/pll.v $(SYN_OUT)/pll_logic_net.v $(SRC_DIR)/pll_analog.v $(SIM_OUT)/sim_injection.v $(SRC_DIR)/il_dco.v $(SIM_OUT)/sim_dco.v $(SIM_OUT)/sim_sym.v $(SRC_DIR)/sim_SSBBPD.v $(SRC_DIR)/conf_div.v
+$(SIM_OUT)/test_pll_postsyn.vcd: $(CELLS_SRC) $(PLL_DIG_SIM_SRC) $(SYN_OUT)/pll_logic_net.v
 	mkdir -p $(SIM_OUT)
-	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o a.out -D SIMULATION=1 $(CELLS_ADD_DEF) $^ && $(VVP) a.out
+	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o test_pll_postsyn.out -D SIMULATION=1 $(CELLS_ADD_DEF) $^ && $(VVP) -n test_pll_postsyn.out | tee test_pll_postsyn.txt
+	grep -q PASS $(SIM_OUT)/test_pll_postsyn.txt
 
 $(SIM_OUT)/%.sp: $(SYN_OUT)/%.sp
 	mkdir -p $(SIM_OUT)
@@ -242,6 +260,18 @@ $(SYN_OUT)/%.sp: $(SYN_OUT)/%_net.v
 $(SYN_OUT)/%_net.v: $(SYN_DIR)/Makefile
 	make -C $(SYN_DIR) TOP=$* all
 	make -C $(SYN_DIR) TOP=$* sdf
+
+# The RTL of each block (the netlists are re-synthesized when it changes; only the characterizations
+# that depend on the block run again)
+PDK_CELLS_V=$(SRC_DIR)/pll_cells_$(PDK).v
+$(SYN_OUT)/FINE_DELAY_net.v: $(SRC_DIR)/fine_delay.v $(PDK_CELLS_V)
+$(SYN_OUT)/MID_DELAY_net.v: $(SRC_DIR)/mid_delay.v $(PDK_CELLS_V)
+$(SYN_OUT)/COARSE_DELAY_net.v: $(SRC_DIR)/coarse_delay.v $(PDK_CELLS_V)
+$(SYN_OUT)/PLL_INJECTION_net.v: $(SRC_DIR)/injection.v $(PDK_CELLS_V)
+$(SYN_OUT)/PLL_SYM_net.v: $(SRC_DIR)/sym.v $(SRC_DIR)/sym_mux.v $(SRC_DIR)/ssbbpd.v $(PDK_CELLS_V)
+$(SYN_OUT)/PLL_ILDCO_net.v: $(SRC_DIR)/il_dco.v $(SRC_DIR)/sym.v $(SRC_DIR)/sym_mux.v $(SRC_DIR)/ssbbpd.v $(SRC_DIR)/fine_delay.v $(SRC_DIR)/mid_delay.v $(SRC_DIR)/coarse_delay.v $(PDK_CELLS_V)
+$(SYN_OUT)/pll_net.v: $(SYN_SRC)
+$(SYN_OUT)/pll_logic_net.v: $(SYN_DIG_SRC)
 
 $(SIM_OUT)/sim_dco.v: $(SIM_OUT)/test_fine_delay.raw $(SIM_OUT)/test_mid_delay.raw $(SIM_OUT)/test_coarse_delay.raw $(SRC_DIR)/create_sim_dco.py
 	$(PYTHON) $(SRC_DIR)/create_sim_dco.py $(SIM_OUT)/test_fine_delay.log $(SIM_OUT)/test_mid_delay.log $(SIM_OUT)/test_coarse_delay.log > $(SIM_OUT)/sim_dco.v
@@ -260,3 +290,18 @@ show_delay_overlap_digital: $(SIM_OUT)/test_mid_delay.vcd $(SIM_OUT)/test_fine_d
 	$(PYTHON) $(SRC_DIR)/delay_char.py $(SIM_OUT)/test_fine_delay.vcd.mt0 $(SIM_OUT)/test_mid_delay.vcd.mt0 $(SIM_OUT)/test_coarse_delay.vcd.mt0
 
 .SECONDARY:
+
+# Design report: executes src/pll_design.ipynb with the results of this PDK and exports it to HTML.
+# The figures (pdf) go to $(SIM_OUT)/report. Needs jupyter (nbconvert) where python3 runs natively.
+REPORT_DEPS=$(SIM_OUT)/test_fine_delay.raw $(SIM_OUT)/test_mid_delay.raw $(SIM_OUT)/test_coarse_delay.raw \
+	$(SIM_OUT)/test_pll_injection.raw $(SIM_OUT)/test_sym_delay.raw $(SIM_OUT)/test_pll.vcd $(SIM_OUT)/test_pll_inj.vcd \
+	$(SRC_DIR)/pll_design.ipynb $(SRC_DIR)/pll_model.py
+report: $(SIM_OUT)/report/pll_design.html
+
+$(SIM_OUT)/report/pll_design.html: $(REPORT_DEPS)
+	mkdir -p $(SIM_OUT)/report
+	cd $(SRC_DIR) && PDK=$(PDK) PLL_SIM_OUT=$(SIM_OUT) python3 -m nbconvert --to notebook --execute pll_design.ipynb \
+		--ExecutePreprocessor.timeout=3600 --output $(SIM_OUT)/report/pll_design.ipynb
+	python3 -m nbconvert --to html --no-input $(SIM_OUT)/report/pll_design.ipynb --output $@
+
+.PHONY: report

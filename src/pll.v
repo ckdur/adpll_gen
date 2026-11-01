@@ -37,6 +37,7 @@ module pll #(
     wire [MID_NDELS-1:0] MID_MUX;
     wire [FINE_NDELS-1:0] FINE_MUX;
     wire DCO_EN;
+    wire INJ_ACT; // INJ_EN retimed and gated by LOCKED (pll_logic)
 
     pll_logic
 `ifdef SIMULATION
@@ -62,6 +63,7 @@ module pll #(
         .VDD(VDD), .VSS(VSS),
 `endif
         .REF(REF), .OUT(OUT), .MID_OUT(MID_OUT), .INJ_EDGE(INJ_EDGE), .RST_N(RST_N),
+        .INJ_EN(INJ_EN), .INJ_ACT(INJ_ACT),
         .SS_BBPD(SS_BBPD),
         .KP(KP), .KI(KI),
         .FCW(FCW),
@@ -90,7 +92,7 @@ module pll #(
         .COARSE_MUX(COARSE_MUX),
         .MID_MUX(MID_MUX),
         .FINE_MUX(FINE_MUX),
-        .DCO_EN(DCO_EN), .REF(REF), .INJ_EN(INJ_EN),
+        .DCO_EN(DCO_EN), .REF(REF), .INJ_EN(INJ_ACT),
         .SS_BBPD(SS_BBPD),
         .OUT(OUT), .MID_OUT(MID_OUT), .INJ_EDGE(INJ_EDGE)
     );

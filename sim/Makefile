@@ -4,7 +4,11 @@ SYN_DIR=$(abspath ../syn)
 include $(ROOT_DIR)/settings.mk
 SRC_DIR=$(abspath ../src)
 
-CELLS_ADD_DEF=-D POSTSYN=1
+# functional: the cell models without their specify delays (there is no SDF of pll_logic here)
+CELLS_ADD_DEF=-D POSTSYN=1 -D functional=1
+
+# A failed test or simulation must not leave its target (e.g. the vcd of a FAIL) as up to date
+.DELETE_ON_ERROR:
 
 include $(SIM_DIR)/tests.mk
 

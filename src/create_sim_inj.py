@@ -14,15 +14,19 @@ def convert_simulation_to_verilog(fil):
     
     v3 = meas["tedge_start"]
     iv3 = int(v3 * 1e15)
-    str = str + (f"    always @(REF) INJ_EDGE = #({iv3}) REF; // tedge_start = {v3}\n")
+    str = str + (f"    always @(REF) INJ_EDGE <= #({iv3}) REF; // tedge_start = {v3}\n")
     
     v1 = meas["twin_start"]
     iv1 = int(v1 * 1e15)
-    str = str + (f"    always @(REF) DEL_REF = #({iv1}) REF; // twin_start = {v1}\n")
+    str = str + (f"    always @(REF) DEL_REF <= #({iv1}) REF; // twin_start = {v1}\n")
     
     v2 = meas["twin_len"]
     iv2 = int(v2 * 1e15)
-    str = str + (f"    always @(REF) DEL_EDGE = #({iv1} + {iv2}) REF; // twin_start + twin_len = {v1} + {v2}\n")
+    str = str + (f"    always @(REF) DEL_EDGE <= #({iv1} + {iv2}) REF; // twin_start + twin_len = {v1} + {v2}\n")
+
+    v4 = meas["tbbpd_ck"]
+    iv4 = int(v4 * 1e15)
+    str = str + (f"    always @(REF) BBPD_CK <= #({iv4}) REF; // tbbpd_ck = {v4}\n")
 
     return str
 
@@ -39,9 +43,12 @@ module sim_pll_injection # (
     inout VDD, VSS, // ignored
     input REF, INJ_EN,
     output reg INJ_EDGE, 
-    output INJ_WIN
+    output INJ_WIN,
+    output reg BBPD_CK
 );
     reg DEL_REF, DEL_EDGE;
+
+    // Transport delays (non-blocking): every event of REF propagates
 
     // Extracted from test_pll_injection.sp
 {always_str}

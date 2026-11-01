@@ -29,10 +29,14 @@ make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization 
 make -C sim PDK=ics55 test_pll_injection test_sym_delay
 make -C sim PDK=ics55 test_dco_noise           # DCO phase noise (ISF method, ~1h on 10 cores)
 make -C sim PDK=ics55 test_pll_digital         # iverilog, uses the models made from the ngspice results
+make -C sim PDK=ics55 test_pll_digital_inj     # same, INJ_EN=1 (active after LOCKED); both check for glitches (PASS/FAIL)
+make -C sim PDK=ics55 report                   # executes src/pll_design.ipynb -> sim/outputs/<PDK>/report/pll_design.html
 make -C sim PDK=ics55 clean                    # only this PDK; clean_all removes every PDK
 ```
 
 Simulations depend on their netlists, so a `sim` target synthesizes what it needs (`make -C syn TOP=...`).
+Each block netlist also depends on its own RTL (`sim/tests.mk`), so editing e.g. `sym_mux.v` only re-runs the
+characterizations of the blocks that contain it (the coarse characterization takes hours).
 
 ## Tools and docker
 
@@ -57,6 +61,27 @@ with the repo and the PDK mounted at the same absolute paths. Force with `USE_DO
 - `PLL_CELL_BUFFX0` (testbench loads) is defined per PDK in the generated `models.inc`, together with the
   model `.LIB` and the standard-cell SPICE include.
 
+## Injection and phase detector (things that are easy to break)
+
+- The symmetric mux passes `INJ_EDGE_BALANCED` (NAND2) during `INJ_WIN`: the injected edge is the **rising**
+  edge of OUT, the same edge the SS-BBPD compares. Both mux paths are INV + NAND2 + NAND2 with equal loads
+  (the dummy inverters of `PLL_SYM` balance them and drive the level flops).
+- The SS-BBPD latch is captured with `BBPD_CK` (`injection.v`, `CK_NDELS` buffers after the window), after it
+  arbitrates. `il_dco.v` combines it with two level samples (`EARLY = LC ? latch : L0`) for a symmetric
+  +/- T/2 characteristic. Requires `BBPD_CK - INJ_EDGE < T_OUT/2`. `SS_BBPD = 2'b01` early, `2'b10` late.
+- `INJ_EN` is retimed on REF rising and gated by `LOCKED` and `PHASE_OK` (`INJ_ACT` in `pll_logic.v`).
+- Fine code = `FILTER_OUT / 2^(FILTER_BITS - $clog2(FINE_NDELS))` (integer part + 1st-order DSM fraction).
+- `pll_test.v` gains: `-D TB_KP=.. -D TB_KI=..` (acquisition) and `-D TB_KP_LOCKED=.. -D TB_KI_LOCKED=..`
+  (after LOCKED). A low-jitter KP cannot pull in alone (see the notebook, section 7).
+
+## Design notebook and models
+
+- `src/pll_design.ipynb`: the design report (reads `sim/outputs/<PDK>`, or `PLL_SIM_OUT`). Executed by `make report`.
+- `src/pll_model.py`: characterization loader, linear (hybrid z-domain) model, behavioral model that mimics the
+  RTL arithmetic (validated against `test_pll_digital`: same noise-free TIE), and the edge-log analysis.
+- `pll_test.v` writes `test_pll[_inj]_edges.txt` (edges of OUT/REF/FINE_OUT, LOCKED, INJ_ACT, filter, codes).
+- `src/noise_shape.ipynb` is deprecated; `src/dco_shape.ipynb` is still the DCO-noise fit.
+
 ## SPICE conventions (ngspice)
 
 - Parameter expressions as `'expr'` (works in ngspice and HSPICE). No bare `(param)` or bare param values.
@@ -68,7 +93,15 @@ with the repo and the PDK mounted at the same absolute paths. Force with `USE_DO
 - `src/spice_io.py` reads both. ngspice prints failed `.meas` first, so never rely on the log order
   (`meas_until_failed` sorts by name).
 - `test_coarse_delay.sp` needs `.OPTION minbreak=1e-15` (coincident breakpoints abort the run).
-- Thread count goes in the generated `.spiceinit` (`NGSPICE_THREADS`), not on the command line.
+- Timing characterizations need a maximum step (`.TRAN 1p stop 0 1p`): with only `.TRAN 10n` the steps around
+  the edges are ~50 ps and the `.meas` are interpolated (errors of ~10 ps).
+- Thread count goes in the generated `.spiceinit` (`NGSPICE_THREADS`), not on the command line. With parallel
+  runs (`ISF_JOBS`) use `NGSPICE_THREADS=1`: jobs x threads above the core count slows everything down a lot.
+
+## Delay models (create_sim_*.py)
+
+- All generated delays are transport delays (`OUT <= #d IN`). A blocking `OUT = #d IN` or `#d; OUT = IN` drops
+  the events during the wait: glitches disappear or OUT gets stuck at the wrong level.
 
 ## DCO phase noise (ISF)
 
@@ -82,7 +115,8 @@ alone shift the edges ~80 fs). `src/dco_shape.ipynb` reads `sim/outputs/<PDK>/te
 
 - `ROOT_DIR` must be defined by the Makefile that includes `settings.mk` (`syn/Makefile`, `sim/Makefile`).
 - `models.inc` and `.spiceinit` depend on `settings.mk` but are only replaced when their content changes,
-  so editing `settings.mk` does not re-run the simulations. Editing `syn/Makefile` does re-synthesize
+  so editing `settings.mk` does not re-run the simulations. `.spiceinit` is an order-only prerequisite
+  (`| $(SIM_OUT)/.spiceinit`): changing `NGSPICE_THREADS` does not re-run the characterizations either. Editing `syn/Makefile` does re-synthesize
   everything (the netlists depend on it).
 - Recipes run with `bash -o pipefail`, so a tool failing behind `| tee` fails the target.
 - Long runs: the full transistor-level `test_pll` takes ~27 min per 200 ns of simulated time in ngspice.
