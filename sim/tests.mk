@@ -129,6 +129,16 @@ $(SIM_OUT)/isf_done: $(SIM_OUT)/isf_runs.txt
 $(SIM_OUT)/test_dco_noise.csv: $(SIM_OUT)/isf_done $(SRC_DIR)/isf_phase_noise.py
 	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/isf_phase_noise.py | tee test_dco_noise.txt
 
+# Optional reference for test_dco_noise: Spectre autonomous PSS + pnoise of the same DCO (~10 min).
+# Native only (Spectre is not in the docker image), needs numpy. SPECTRE is the command to run it,
+# e.g. SPECTRE="source 616cad >/dev/null; LD_LIBRARY_PATH=... spectre" (see CLAUDE.md)
+SPECTRE?=spectre
+test_dco_spectre: $(SIM_OUT)/test_dco_spectre.csv
+
+$(SIM_OUT)/test_dco_spectre.csv: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/spectre_dco_pnoise.py $(SIM_OUT)/models.inc
+	cp $(SRC_DIR)/test_dco.sp $(SIM_OUT)/test_dco.sp
+	cd $(SIM_OUT) && python3 $(SRC_DIR)/spectre_dco_pnoise.py --spectre '$(SPECTRE)'
+
 # Main PLL test
 test_pll: $(SIM_OUT)/test_pll_tran.raw
 

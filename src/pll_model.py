@@ -47,6 +47,8 @@ class Characterization:
     twin_len: float = None      # INJ_WIN width (s)
     dco_pn: dict = None         # ISF result: freq, L, L_white, L_flicker (dBc/Hz)
     dco_pn_f0: float = None     # Oscillation frequency of the ISF simulation (Hz)
+    dco_pn_spectre: dict = None # Spectre PSS+pnoise reference (test_dco_spectre): freq, L (dBc/Hz)
+    dco_pn_spectre_f0: float = None
     source: str = ""
 
     def half_period(self, coarse, mid, fine):
@@ -80,6 +82,12 @@ def load_characterization(sim_out):
         if os.path.exists(p("test_dco_noise.txt")):
             m = re.search(r"f0\s*=\s*([\d.eE+-]+)\s*GHz", open(p("test_dco_noise.txt")).read())
             ch.dco_pn_f0 = float(m.group(1)) * 1e9 if m else None
+    if os.path.exists(p("test_dco_spectre.csv")):
+        d = np.genfromtxt(p("test_dco_spectre.csv"), delimiter=",", names=True)
+        ch.dco_pn_spectre = dict(freq=d["freq"], L=d["L_dBc_Hz"])
+        if os.path.exists(p("test_dco_spectre.txt")):
+            m = re.search(r"f0\s*=\s*([\d.eE+-]+)\s*GHz", open(p("test_dco_spectre.txt")).read())
+            ch.dco_pn_spectre_f0 = float(m.group(1)) * 1e9 if m else None
     return ch
 
 

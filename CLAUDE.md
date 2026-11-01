@@ -28,6 +28,7 @@ make -C syn PDK=ics55 TOP=FINE_DELAY all gen   # synthesize + powered SPICE netl
 make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization (also mid/coarse)
 make -C sim PDK=ics55 test_pll_injection test_sym_delay
 make -C sim PDK=ics55 test_dco_noise           # DCO phase noise (ISF method, ~1h on 10 cores)
+make -C sim PDK=ics55 test_dco_spectre SPECTRE=...  # optional reference: Spectre PSS+pnoise of the same DCO
 make -C sim PDK=ics55 test_pll_digital         # iverilog, uses the models made from the ngspice results
 make -C sim PDK=ics55 test_pll_digital_inj     # same, INJ_EN=1 (active after LOCKED); both check for glitches (PASS/FAIL)
 make -C sim PDK=ics55 report                   # executes src/pll_design.ipynb -> sim/outputs/<PDK>/report/pll_design.html
@@ -110,6 +111,16 @@ Hajimiri-Lee ISF method: `src/create_isf.py` (writes the runs), `src/isf_phase_n
 `src/spice_netlist.py` (flattens the netlist to the transistor wrappers). Knobs: `ISF_NPHASE`, `ISF_NPER`,
 `ISF_DQ`, `ISF_TWARM`, `ISF_JOBS`. The reference run injects zero current on purpose (the pulse breakpoints
 alone shift the edges ~80 fs). `src/dco_shape.ipynb` reads `sim/outputs/<PDK>/test_dco_noise.csv`.
+- The flicker part uses the tabulated `.noise` spectra per device (log-log in frequency). Do not go back to one
+  power law `K/f^ef` fitted at 1 kHz with a common exponent: NMOS (~1.3) and PMOS (~1.15) differ, and that
+  overestimated L by ~6 dB at 1 MHz.
+- Reference: `make test_dco_spectre` runs Spectre autonomous PSS + pnoise on the same netlist/codes/models
+  (`src/spectre_dco_pnoise.py`, native only, ~10 min). Agreement with the ISF on ics55: within 1 dB from
+  1 kHz to 100 MHz, same dominant contributor (`mid/inv_0`). Spectre reads the HSPICE-format PDK libraries
+  in `simulator lang=spice` mode; `GND` must become `0`.
+- Spectre on this machine is MMSIM 13.1 (`source 616cad`). It needs a local license server (`lmgrd`) and old
+  `libreadline.so.5`/`libhistory.so.5`/`libncurses.so.5`: a directory with symlinks to the system `.so.8`/`.so.6`
+  works, e.g. `make test_dco_spectre SPECTRE="source /usr/local/bin/616cad >/dev/null; LD_LIBRARY_PATH=<compat dir> spectre"`.
 
 ## Make gotchas
 
