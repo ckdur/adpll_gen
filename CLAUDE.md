@@ -11,8 +11,13 @@ converts those results into Verilog delay models for fast digital simulations of
 
 ## Layout
 
-- `settings.mk`: shared by `sim/` and `syn/`. PDK selection, sources, tools (native or docker), per-PDK rules.
-- `lib/<PDK>_settings.tcl`: liberty/LEF/CDL/SPICE paths of each PDK (read by the tcl scripts).
+- `settings.mk`: shared by `sim/` and `syn/`. PDK selection, sources, tools (native or docker), the generic
+  `models.inc`/`.spiceinit` rules. It includes `lib/<PDK>.mk`.
+- `lib/<PDK>.mk`: makefile fragment of each PDK (PDK_ROOT, SPICE models, `.spiceinit`, gate-level models,
+  design-target overrides). `lib/<PDK>_settings.tcl`: liberty/LEF/CDL/SPICE paths and supply pins (tcl scripts).
+- PDKs: `ics55` (55 nm, 1.2 V), `ihp-sg13g2` (130 nm, 1.2 V), `ihp-sg13cmos5l` (130 nm CMOS 5 metals, only in
+  the docker image; same devices and cell netlists as sg13g2, so its pre-layout results are identical),
+  `sky130A` (130 nm, 1.8 V, `sky130_fd_sc_hd`).
 - `src/`: RTL, testbenches (`*_tb.v`, `test_*.v`, `test_*.sp`) and the Python post-processing.
   - `pll_cells_<PDK>.v`: maps `PLL_CELL_*` to the standard cells of the PDK. The `` `ifdef YOSYS `` section
     declares those standard cells as blackboxes for synthesis.
@@ -23,7 +28,7 @@ converts those results into Verilog delay models for fast digital simulations of
 ## Commands
 
 ```sh
-# PDK is ics55 or ihp-sg13g2 (the default is set in settings.mk)
+# PDK is ics55, ihp-sg13g2, ihp-sg13cmos5l or sky130A (the default is set in settings.mk)
 make -C syn PDK=ics55 TOP=FINE_DELAY all gen   # synthesize + powered SPICE netlist
 make -C sim PDK=ics55 test_fine_delay          # ngspice delay characterization (also mid/coarse)
 make -C sim PDK=ics55 test_pll_injection test_sym_delay
@@ -31,13 +36,39 @@ make -C sim PDK=ics55 test_dco_noise           # DCO phase noise (ISF method, ~1
 make -C sim PDK=ics55 test_dco_spectre SPECTRE=...  # optional reference: Spectre PSS+pnoise of the same DCO
 make -C sim PDK=ics55 test_pll_digital         # iverilog, uses the models made from the ngspice results
 make -C sim PDK=ics55 test_pll_digital_inj     # same, INJ_EN=1 (active after LOCKED); both check for glitches (PASS/FAIL)
+make -C sim PDK=ics55 pll_target               # design target from the characterization (src/pll_target.py)
 make -C sim PDK=ics55 report                   # executes src/pll_design.ipynb -> sim/outputs/<PDK>/report/pll_design.html
+make -C sim compare                            # table of every PDK with a report -> sim/outputs/compare.{md,html}
 make -C sim PDK=ics55 clean                    # only this PDK; clean_all removes every PDK
 ```
 
 Simulations depend on their netlists, so a `sim` target synthesizes what it needs (`make -C syn TOP=...`).
 Each block netlist also depends on its own RTL (`sim/tests.mk`), so editing e.g. `sym_mux.v` only re-runs the
 characterizations of the blocks that contain it (the coarse characterization takes hours).
+
+## Porting to a new technology (design methodology)
+
+The architecture and the code widths (coarse 15, mid 15, fine 31) are fixed; a technology changes the delays.
+1. Three files: `lib/<PDK>.mk` (copy one: `PDK_MODELS_INC` with the model `.LIB`, the standard-cell SPICE,
+   `lvdd` and `PLL_CELL_BUFFX0`; `PDK_SPICEINIT`; `CELLS_SRC`/`CELLS_ADD_DEF`), `lib/<PDK>_settings.tcl`
+   (`LIBS`, `LEFS`, `CDLS`, `SPICES`, `LIBS_BC/WC`, and `POWER_PINS`/`GROUND_PINS` if the cells are not VDD/VSS),
+   and `src/pll_cells_<PDK>.v` (every `PLL_CELL_*`; NAND3 input A0 on the transistor next to ground).
+2. If the transistors are not `nm*_lp`/`sg13_*`/`sky130_fd_pr__*fet*`, add them to `NMOS`/`PMOS` in `create_isf.py`.
+3. `make -C sim PDK=<PDK> report` runs everything: characterization, ISF, `pll_target`, RTL, report.
+   `pll_target.py` (functions `pll_model.design`, `choose_gains`, `choose_locked_gains`) picks:
+   - the supported band: tuning range ±20 %, `BBPD_CK` and the window end before T/2 (+15 %);
+   - f_OUT = N f_REF: the highest N whose smallest pull-in K_P gives beta_p <= 1 % of T_OUT (the loop must pull in
+     from either end of the fine range, also with the target at 25 %/75 % of it; on ics55 this reproduces the
+     hand-tuned 1 GHz, 4096/256 vs 3967/257);
+   - gains after LOCKED (gear shifting) for minimum jitter with the ISF noise, if `test_dco_noise.csv` exists.
+   It writes `pll_target.vh` (compiled before `pll_test.v`: `TB_REF_T`, `TB_FCW`, `TB_KP/KI[_LOCKED]`) and
+   `pll_target.json` (notebook section 0). Fix any choice in `lib/<PDK>.mk`: `PLL_F_REF`, `PLL_FCW`,
+   `PLL_KP`/`PLL_KI`, `PLL_KP_LOCKED`/`PLL_KI_LOCKED` (ics55 fixes its reference design).
+4. Check in the report: the coverage of the tuning curve (fine range > mid step, mid range > coarse step;
+   sky130 fine/mid is 0.96 and sg13g2 mid/coarse 0.99), the injection margins, and the RTL lock/glitch rows.
+- Slow technologies: the sg13g2/sky130 cells are ~3x slower than ics55 (tuning ~0.2-0.7 GHz). The sg13g2 fine line
+  saturates (and code 31 is faster than 30), which limits the pull-in. Use a lower `PLL_F_REF` for useful N.
+- `ISF_LEN` (default 20n) must hold several DCO periods.
 
 ## Tools and docker
 
@@ -125,12 +156,20 @@ alone shift the edges ~80 fs). `src/dco_shape.ipynb` reads `sim/outputs/<PDK>/te
 ## Make gotchas
 
 - `ROOT_DIR` must be defined by the Makefile that includes `settings.mk` (`syn/Makefile`, `sim/Makefile`).
-- `models.inc` and `.spiceinit` depend on `settings.mk` but are only replaced when their content changes,
+- `models.inc` and `.spiceinit` depend on `settings.mk` and `lib/<PDK>.mk` but are only replaced when their content changes,
   so editing `settings.mk` does not re-run the simulations. `.spiceinit` is an order-only prerequisite
   (`| $(SIM_OUT)/.spiceinit`): changing `NGSPICE_THREADS` does not re-run the characterizations either. Editing `syn/Makefile` does re-synthesize
   everything (the netlists depend on it).
 - Recipes run with `bash -o pipefail`, so a tool failing behind `| tee` fails the target.
 - Long runs: the full transistor-level `test_pll` takes ~27 min per 200 ns of simulated time in ngspice.
+
+- The netlists are copied to `sim/outputs` only when their content changes (`cmp -s || cp`), so re-generating an
+  identical netlist (e.g. after editing `syn/tcl/netlist.tcl`) does not re-run the characterizations.
+- `.SECONDARY:` (no prerequisites) makes every target secondary: deleting an intermediate file (e.g.
+  `pll_target.vh`) does not re-make it nor its dependents. Re-make it explicitly (`make pll_target`).
+- `make report` depends on `pll_target.vh`, which depends on `test_dco_noise.csv` when it exists, so editing
+  `create_isf.py`/`isf_phase_noise.py` makes a report re-run the ISF (~1 h). `make -n` misreports the
+  characterizations as stale (models.inc): use `make -n -d ... | grep newer` to see the real reasons.
 
 ## Known issues
 

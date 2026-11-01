@@ -26,8 +26,9 @@ TB = "test_dco.sp"          # The DCO testbench (fixed codes)
 DUT = "PLL_ILDCO.sp"        # The netlist of the DCO
 DUT_INST = "xdco"           # Instance of the DCO in the testbench
 OUT = "out"                 # Oscillator output used as phase reference
-NMOS = r'^(nm\w*_lp|sg13_\w+_nmos)$'   # Transistor wrappers (d g s b) of the PDKs
-PMOS = r'^(pm\w*_lp|sg13_\w+_pmos)$'
+# Transistor wrappers (subcircuits d g s b) of the PDKs: ics55, IHP (sg13g2/sg13cmos5l), sky130
+NMOS = r'^(nm\w*_lp|sg13_\w+_nmos|sky130_fd_pr__(special_)?nfet_\w+)$'
+PMOS = r'^(pm\w*_lp|sg13_\w+_pmos|sky130_fd_pr__(special_)?pfet_\w+)$'
 LUT_POINTS = 13             # Vgs and Vds points of the noise tables
 
 def spice_num(s):

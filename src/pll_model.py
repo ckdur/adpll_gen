@@ -648,3 +648,227 @@ def analyze_rtl(fil, f_ref, N, tmux=0.0, settle=200e-9):
         d = np.where(np.abs(d1) < np.abs(d0), d1, -d0)
         r["natural_minus_out"] = (nat[ok], -d[ok])
     return r
+
+
+###############################################################################
+# Design target for a technology (used by src/pll_target.py and the notebook)
+###############################################################################
+# The generator has fixed code widths (coarse 15, mid 15, fine 31) and a fixed architecture, so a new
+# technology changes only the delays. From the characterization the design flow derives:
+#   1. the band of output frequencies that the technology supports (tuning range with PVT margin,
+#      continuity of the tuning curve, and the timing of the injection/SS-BBPD logic),
+#   2. f_OUT = N f_REF inside that band, with the coarse/mid codes that the acquisition will find,
+#   3. the loop gains: the smallest K_P (lowest jitter) that still pulls in from any initial fine code.
+
+def injection_timing(sim_out, ch):
+    """Times of the injection logic at the inputs of the mux, after the falling edge of REF (s).
+    early/late: largest error of the natural DCO edge that the window accepts (see the notebook, sec. 3)."""
+    m = read_meas(os.path.join(sim_out, "test_pll_injection.log"))
+    s = read_meas(os.path.join(sim_out, "test_sym_delay.log"))
+    t_inv = s.get("tlvl", 0.0) / 2
+    t_open = ch.twin_start + s.get("twin_on", 0.0)
+    t_edge = ch.tedge + t_inv
+    t_close = ch.twin_start + ch.twin_len + s.get("twin_off", 0.0)
+    t_ck = m.get("tbbpd_ck")
+    return dict(t_open=t_open, t_edge=t_edge, t_close=t_close, t_ck=t_ck,
+                early=t_edge - t_open, late=t_close - t_edge)
+
+
+def codes_for(ch, f):
+    """Coarse/mid codes that put f closest to the middle of the fine range: (coarse, mid, fraction)."""
+    best = None
+    nf = len(ch.fine) - 1
+    for c in range(len(ch.coarse)):
+        for m in range(len(ch.mid)):
+            lo, hi = ch.period(c, m, 0), ch.period(c, m, nf)
+            if lo <= 1 / f <= hi:
+                r = (1 / f - lo) / (hi - lo)
+                if best is None or abs(r - 0.5) < abs(best[2] - 0.5):
+                    best = (c, m, r)
+    return best
+
+
+def technology_limits(ch, inj, margin_tune=0.2, margin_inj=0.15):
+    """Band of f_OUT supported by a characterized technology, and the reason of each limit.
+    margin_tune: relative margin from the ends of the tuning range (PVT, the acquisition needs headroom).
+    margin_inj: margin of the injection/SS-BBPD timing (BBPD_CK and the end of the window before T/2)."""
+    nc, nm, nf = len(ch.coarse) - 1, len(ch.mid) - 1, len(ch.fine) - 1
+    f_lo_t, f_hi_t = 1 / ch.period(nc, nm, nf), 1 / ch.period(0, 0, 0)
+    lim = {"tuning range": (f_lo_t, f_hi_t),
+           "tuning range with PVT margin": (f_lo_t * (1 + margin_tune), f_hi_t / (1 + margin_tune))}
+    # The SS-BBPD latch is captured BBPD_CK after the injected edge: it must happen before the next
+    # (falling) edge of OUT, T/2 later. The window must also close before that edge
+    if inj.get("t_ck"):
+        lim["SS-BBPD capture before T/2"] = (0, 1 / (2 * (inj["t_ck"] - inj["t_edge"]) * (1 + margin_inj)))
+    lim["window closes before T/2"] = (0, 1 / (2 * (inj["t_close"] - inj["t_edge"]) * (1 + margin_inj)))
+    lo = max(v[0] for k, v in lim.items() if k != "tuning range")
+    hi = min(v[1] for k, v in lim.items() if k != "tuning range")
+    # Continuity of the tuning curve: the fine range must cover the largest mid step, the mid range the
+    # largest coarse step (otherwise some frequencies cannot be reached)
+    gaps = dict(fine_vs_mid=np.ptp(ch.fine) / np.max(np.diff(ch.mid)),
+                mid_vs_coarse=np.ptp(ch.mid) / np.max(np.diff(ch.coarse)))
+    return dict(f_lo=lo, f_hi=hi, limits=lim, coverage=gaps)
+
+
+def target_period_code(ch, coarse, mid, f):
+    """Fine code (fractional) that gives the output frequency f with the given coarse/mid codes."""
+    codes = np.arange(len(ch.fine))
+    return float(np.interp(1 / f, [ch.period(coarse, mid, c) for c in codes], codes))
+
+
+def choose_frequency(ch, lims, f_ref, fcw_bits=8, frac_band=(0.25, 0.75)):
+    """Highest f_OUT = N f_REF inside the supported band whose coarse/mid codes leave the target in the
+    central part of the fine range (frac_band). Returns (N, coarse, mid, fraction) or None."""
+    n_lo = max(3, int(np.ceil(lims["f_lo"] / f_ref)))
+    n_hi = min((1 << fcw_bits) + 1, int(np.floor(lims["f_hi"] / f_ref)))
+    for N in range(n_hi, n_lo - 1, -1):
+        c = codes_for(ch, N * f_ref)
+        if c is not None and frac_band[0] <= c[2] <= frac_band[1]:
+            return (N,) + c
+    for N in range(n_hi, n_lo - 1, -1):              # Relax the fine-range condition
+        c = codes_for(ch, N * f_ref)
+        if c is not None:
+            return (N,) + c
+    return None
+
+
+def pull_in(cfg, ch, coarse, mid, n_ref=6000, starts=("min", "max"), f_offsets=(0.0,)):
+    """Noise-free pull-in check of the bang-bang loop after the coarse/mid acquisition: the loop filter
+    starts at the lowest/highest fine code and must settle at the code of f_OUT (for each reference
+    frequency error in f_offsets, which moves the target code). Returns (all ok, list of results)."""
+    out = []
+    top = (1 << cfg.filter_bits) - 1
+    for fo in f_offsets:
+        target = target_period_code(ch, coarse, mid, cfg.f_out * (1 + fo))
+        for s in starts:
+            f0 = 0 if s == "min" else top
+            r = simulate(cfg, ch, coarse, mid, n_ref=n_ref, filt0=f0, noise=False, f_offset=fo,
+                         pd_early_range=0.5 / cfg.f_out)
+            ok = abs(r.filt[-500:].mean() / cfg.code_lsb - target) < 1
+            out.append(dict(start=s, f_offset=fo, target=target, ok=bool(ok)))
+    return all(o["ok"] for o in out), out
+
+
+def choose_gains(cfg, ch, coarse, mid, ratio=1/16, kps=None, safety=1.0):
+    """Smallest K_P (K_I = K_P * ratio) that pulls in from both ends of the fine range, also when the
+    target moves to 25 % / 75 % of the fine range (spread of the acquisition, reference error), times
+    a safety factor (the 25 %/75 % cases already are the margin). Returns (KP, KI, table of the sweep).
+    On ics55 at 1 GHz this gives K_P = 4096 (the hand-tuned design of the repository is 3967)."""
+    if kps is None:
+        kps = np.unique(np.round(np.geomspace(32, 32768, 21)).astype(int))
+    nf = len(ch.fine) - 1
+    # Reference errors that move the target code to 25 % and 75 % of the fine range
+    Tlo, Thi = ch.period(coarse, mid, 0.25 * nf), ch.period(coarse, mid, 0.75 * nf)
+    f_offs = tuple(1 / (cfg.f_out * T) - 1 for T in (1 / cfg.f_out, Tlo, Thi))
+    rows = []
+    kp_min = None
+    for kp in kps:
+        ki = max(1, int(round(kp * ratio)))
+        ok, res = pull_in(replace(cfg, KP=int(kp), KI=ki), ch, coarse, mid, f_offsets=f_offs)
+        rows.append((int(kp), ki, ok))
+        if ok and kp_min is None:
+            kp_min = int(kp)
+    if kp_min is None:
+        return None, None, rows
+    KP = int(min(round(kp_min * safety), (1 << cfg.filter_bits) - 1))
+    KI = max(1, int(round(KP * ratio)))
+    # The chosen gains must pass too (a larger K_P can break the pull-in through a limit cycle)
+    ok, _ = pull_in(replace(cfg, KP=KP, KI=KI), ch, coarse, mid, f_offsets=f_offs)
+    if not ok:
+        KP, KI = kp_min, max(1, int(round(kp_min * ratio)))
+    return KP, KI, rows
+
+
+def beta_p(cfg, ch, KP=None):
+    """Proportional step of the loop in one REF period, relative to T_OUT (A K_P / T)."""
+    return cfg.N * ch.fine_lsb / cfg.code_lsb * (cfg.KP if KP is None else KP) * cfg.f_out
+
+
+def design(ch, inj, f_ref, N=None, KP=None, KI=None, ratio=1/16, fcw_bits=8, beta_max=0.01, log=print):
+    """Design target of a technology: f_OUT = N f_REF and the loop gains (see the functions above).
+    N/KP/KI given: they are kept (only checked). Otherwise N is the highest multiple of f_REF inside the
+    supported band for which a K_P exists that pulls in with a proportional step beta_p <= beta_max T_OUT.
+    A bang-bang loop has no frequency detector: at high f_OUT the drift per REF period, relative to T/2,
+    gets large, the pull-in needs a large K_P, and the limit cycle (~beta_p) dominates the jitter."""
+    lims = technology_limits(ch, inj)
+    if N is None:
+        n_lo = max(3, int(np.ceil(lims["f_lo"] / f_ref)))
+        n_hi = min((1 << fcw_bits) + 1, int(np.floor(lims["f_hi"] / f_ref)))
+        cands = list(range(n_hi, n_lo - 1, -1))
+    else:
+        cands = [int(N)]
+    tried = []
+    for n in cands:
+        c = codes_for(ch, n * f_ref)
+        if c is None:
+            tried.append((n, None, None, "no coarse/mid codes"))
+            continue
+        cfg = PLLConfig(f_ref=f_ref, N=n)
+        if KP is None:
+            kp, ki, rows = choose_gains(cfg, ch, c[0], c[1], ratio=ratio)
+        else:
+            kp, ki = int(KP), int(KI)
+            ok, _ = pull_in(replace(cfg, KP=kp, KI=ki), ch, c[0], c[1])
+            rows = [(kp, ki, ok)]
+        bp = beta_p(cfg, ch, kp) if kp else None
+        good = kp is not None and (KP is not None or N is not None or bp <= beta_max)
+        why = "ok" if good else ("no K_P pulls in" if kp is None else f"beta_p = {100*bp:.2f} % T > {100*beta_max:g} %")
+        tried.append((n, c, kp, why))
+        log(f"N = {n} (f_OUT = {n*f_ref/1e9:.4g} GHz): coarse/mid = {c[0]}/{c[1]}, fine at {100*c[2]:.0f} %, "
+            f"K_P/K_I = {kp}/{ki}, beta_p = {100*bp:.2f} % T: {why}" if kp else f"N = {n}: {why}")
+        if good:
+            return dict(N=n, f_out=n * f_ref, f_ref=f_ref, coarse=c[0], mid=c[1], frac=c[2], KP=kp, KI=ki,
+                        beta_p=bp, limits=lims, gain_sweep=rows, tried=tried)
+    return dict(N=None, limits=lims, tried=tried)
+
+
+# Assumptions that are not simulated (shared by the notebook and pll_target.py)
+ASSUMED_REF = dict(floor_dBc=-150, L_1k_dBc=-130)   # Reference phase noise at f_REF (crystal + buffer)
+ASSUMED_SIGMA_BBPD = 0.3e-12                         # rms input-referred noise of the SS-BBPD (s)
+ASSUMED_JITTER_BAND = (10e3, 100e6)                  # Integration band of the rms jitter
+
+
+def dco_noise_for(ch, f_out):
+    """DCO noise of the ISF result scaled to f_out, or None when test_dco_noise has not been run."""
+    if ch.dco_pn is None:
+        return None
+    d = DCONoise.from_isf(ch.dco_pn)
+    return d.scaled(ch.dco_pn_f0 or f_out, f_out)
+
+
+def choose_locked_gains(cfg, ch, coarse, mid, dco, kp_max, ratios=(1/16, 1/32, 1/64), n_ref=1 << 14,
+                        hold_codes=3, log=print):
+    """Gains after LOCKED (gear shifting): minimum of the sum of the rms jitter without and with injection
+    (behavioral model with the DCO/reference/SS-BBPD noise), among the gains that hold the lock: they
+    must pull in from +/- hold_codes fine codes around the target (the residual error at LOCKED).
+    Returns (KP, KI, jitter without injection, jitter with injection, table)."""
+    ref = RefNoise(**ASSUMED_REF)
+    cfg = replace(cfg, sigma_bbpd=ASSUMED_SIGMA_BBPD)
+    target = target_period_code(ch, coarse, mid, cfg.f_out)
+    top = (1 << cfg.filter_bits) - 1
+    kps = [k for k in np.unique(np.round(np.geomspace(64, 16384, 17)).astype(int)) if k <= kp_max]
+    rows, best = [], None
+    for ratio in ratios:
+        for kp in kps:
+            ki = max(1, int(round(kp * ratio)))
+            c = replace(cfg, KP=int(kp), KI=ki)
+            hold = True
+            for d in (-hold_codes, hold_codes):
+                f0 = int(np.clip((target + d) * c.code_lsb, 0, top))
+                r = simulate(c, ch, coarse, mid, n_ref=4000, filt0=f0, noise=False, pd_early_range=0.5 / c.f_out)
+                hold &= bool(abs(r.filt[-500:].mean() / c.code_lsb - target) < 1)
+            j = []
+            for inj in (False, True):
+                r = simulate(replace(c, inj=inj), ch, coarse, mid, n_ref=n_ref, dco=dco, ref=ref, noise=True,
+                             pd_early_range=0.5 / c.f_out)
+                x = r.x[len(r.x) // 8:]
+                fr, L = phase_noise_from_tie(x, c.f_out, nperseg=min(1 << 17, len(x)))
+                j.append(integrated_jitter(fr, L, *ASSUMED_JITTER_BAND, c.f_out))
+            rows.append((int(kp), ki, hold, j[0], j[1]))
+            if hold and (best is None or j[0] + j[1] < best[2] + best[3]):
+                best = (int(kp), ki, j[0], j[1])
+    if best is None:
+        return None
+    log(f"Gains after LOCKED: K_P/K_I = {best[0]}/{best[1]}: {best[2]*1e12:.2f} ps / {best[3]*1e12:.2f} ps rms "
+        f"(no injection / injection, {ASSUMED_JITTER_BAND[0]/1e3:g} kHz - {ASSUMED_JITTER_BAND[1]/1e6:g} MHz)")
+    return best + (rows,)

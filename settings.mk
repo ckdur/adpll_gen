@@ -60,72 +60,29 @@ SIGN_OUT=$(SIGN_DIR)/outputs/$(PDK)
 SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
 SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
 
-ifeq ($(PDK),ics55)
-PDK_ROOT?=$(HOME)/Documents/SymbioticEDA/ics55/icsprout55-pdk
-SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ics55.v
-
-$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/$(PDK)/libs.tech/ngspice/ICsprout_55LLULP1225_V1p1_hsp.lib\" tt_mos" > $@.tmp
-	@echo ".INCLUDE \"$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/spice/ics55_LLSC_H7CR.spice\"" >> $@.tmp
-	@echo ".PARAM lvdd=1.2" >> $@.tmp
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ics55.v)" >> $@.tmp
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
-	@echo "Ximpl I VDD VSS Z BUFX0P5H7R" >> $@.tmp
-	@echo ".ENDS" >> $@.tmp
-	@$(call update_if_changed,$@)
-
-# ngspice settings for this PDK (.spiceinit next to the testbenches)
-$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo "set ngbehavior=hsa" > $@.tmp
-	@echo "set num_threads=$(NGSPICE_THREADS)" >> $@.tmp
-	@$(call update_if_changed,$@)
-
-CELLS_SRC=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/verilog/ics55_LLSC_H7CR.v $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/verilog/icsIOA_N55_3P3.v
-
-#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
-PDK_FILE?=none
-PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.lyt
-PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.map
-LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/lef/ics55_LLSC_H7CR_ecos.lef $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
-GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR.gds $(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013/gds/ICSIOA_N55_3P3_1P6M1TM.gds
+# Every PDK is described by three files (see "Porting to a new technology" in CLAUDE.md):
+#   lib/<PDK>.mk            this makefile fragment: PDK_ROOT, SPICE models, cell models, design target
+#   lib/<PDK>_settings.tcl  liberty/LEF/CDL/SPICE paths and the supply pin names (tcl scripts)
+#   src/pll_cells_<PDK>.v   PLL_CELL_* mapped to the standard cells
+PDK_MK=$(ROOT_DIR)/lib/$(PDK).mk
+ifeq ($(wildcard $(PDK_MK)),)
+$(error Unknown PDK '$(PDK)': $(PDK_MK) does not exist)
 endif
+include $(PDK_MK)
+# Default of the design target (after the include: lib/<PDK>.mk may set it, see src/pll_target.py)
+PLL_F_REF?=100e6
+SYN_SRC+= $(ROOT_DIR)/src/pll_cells_$(PDK).v
 
-ifeq ($(PDK),ihp-sg13g2)
-# Use the local installation if present, otherwise the one inside the docker image
-PDK_ROOT?=$(firstword $(wildcard /opt/ext/OpenPDKs) /usr/local/share/OpenPDKs)
-SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ihp-sg13g2.v
-
-$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib\" mos_tt" > $@.tmp
-	@echo ".INCLUDE \"$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/spice/sg13g2_stdcell.spice\"" >> $@.tmp
-	@echo ".PARAM lvdd=1.2" >> $@.tmp
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ihp-sg13g2.v)" >> $@.tmp
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
-	@echo "Ximpl Z I VDD VSS sg13g2_buf_1" >> $@.tmp
-	@echo ".ENDS" >> $@.tmp
+# models.inc: PDK_MODELS_INC (models, standard-cell SPICE, lvdd, PLL_CELL_BUFFX0)
+# .spiceinit: PDK_SPICEINIT (ngspice options of the PDK, num_threads)
+# Both are only replaced when their content changes
+$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk $(PDK_MK)
+	$(shell mkdir -p $(dir $@))$(file >$@.tmp,$(PDK_MODELS_INC))
 	@$(call update_if_changed,$@)
 
-# ngspice settings for this PDK (.spiceinit next to the testbenches)
-# The PSP models are OSDI-compiled, so ngspice needs to load them
-$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo "set num_threads=$(NGSPICE_THREADS)" > $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103_nqs.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/r3_cmc.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/mosvar.osdi'" >> $@.tmp
+$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk $(PDK_MK)
+	$(shell mkdir -p $(dir $@))$(file >$@.tmp,$(PDK_SPICEINIT))
 	@$(call update_if_changed,$@)
-
-CELLS_SRC=$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_udp.v $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
-
-#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
-PDK_FILE?=none
-PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.lyt
-PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.map
-endif
 
 export PDK
 export PDK_ROOT

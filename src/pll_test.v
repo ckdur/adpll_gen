@@ -9,9 +9,17 @@
 `ifndef TB_KI
 `define TB_KI 'd257
 `endif
+// Reference period (fs) and FCW (= N - 2): sim/tests.mk compiles $(SIM_OUT)/pll_target.vh first, which
+// defines them (and the gains) for the PDK (src/pll_target.py). These are the defaults without it
+`ifndef TB_REF_T
+`define TB_REF_T 10000000
+`endif
+`ifndef TB_FCW
+`define TB_FCW 'd8
+`endif
 
 module pll_test();
-    localparam REF_T = 10000000; // 10ns, 100MHz
+    localparam REF_T = `TB_REF_T; // fs (10 ns: 100 MHz)
     reg CLK_REF = 1'b0;
     always begin
         #(REF_T/2) CLK_REF <= !CLK_REF;
@@ -142,7 +150,7 @@ module pll_test();
         RST_N = 1'b0;
         KI = `TB_KI;  // See src/pll_design.ipynb (section 7) for the choice of KP/KI
         KP = `TB_KP;
-        FCW = 'd8; // x10 times
+        FCW = `TB_FCW; // f_OUT = (FCW + 2) f_REF
 `ifdef INJ_TEST
         INJ_EN = 1'b1;  // Injection requested from the start (it becomes active after LOCKED)
 `else

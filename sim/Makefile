@@ -4,8 +4,8 @@ SYN_DIR=$(abspath ../syn)
 include $(ROOT_DIR)/settings.mk
 SRC_DIR=$(abspath ../src)
 
-# functional: the cell models without their specify delays (there is no SDF of pll_logic here)
-CELLS_ADD_DEF=-D POSTSYN=1 -D functional=1
+# POSTSYN: the testbench instantiates the synthesized pll_logic (CELLS_ADD_DEF of the PDK: no specify delays)
+CELLS_ADD_DEF+=-D POSTSYN=1
 
 # A failed test or simulation must not leave its target (e.g. the vcd of a FAIL) as up to date
 .DELETE_ON_ERROR:

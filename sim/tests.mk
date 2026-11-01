@@ -104,6 +104,8 @@ view_test_dco: $(SIM_OUT)/test_dco_tran.raw
 #    plus the drain current noise (.noise) of each kind of transistor. Runs ISF_JOBS in parallel
 # 3. Phase noise from the ISFs and the cyclostationary noise of the transistors
 ISF_TWARM?=15n
+# Length of the steady-state waveforms: must hold several DCO periods (slow technologies: ~2-3 ns each)
+ISF_LEN?=20n
 ISF_NPHASE?=128
 ISF_NPER?=3
 ISF_DQ?=50e-18
@@ -116,7 +118,7 @@ view_test_dco_noise: $(SIM_OUT)/test_dco_noise.csv
 
 $(SIM_OUT)/test_dco_isf_wave.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp $(SRC_DIR)/create_isf.py $(SIM_OUT)/models.inc | $(SIM_OUT)/.spiceinit
 	cp $(SRC_DIR)/test_dco.sp $(SIM_OUT)/test_dco.sp
-	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/create_isf.py wave --twarm $(ISF_TWARM)
+	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/create_isf.py wave --twarm $(ISF_TWARM) --len $(ISF_LEN)
 	cd $(SIM_OUT) && $(NGSPICE) -o test_dco_isf_wave.log test_dco_isf_wave.sp < /dev/null
 
 $(SIM_OUT)/isf_runs.txt: $(SIM_OUT)/test_dco_isf_wave.raw $(SRC_DIR)/spice_netlist.py
@@ -228,7 +230,18 @@ $(SIM_OUT)/pll_fine_test.vcd: $(SRC_DIR)/pll_fine_test.v $(SRC_DIR)/pll_analog.v
 # test_pll_digital: no injection. test_pll_digital_inj: INJ_EN=1 from the start (the injection
 # becomes active after LOCKED). Both check that OUT has no glitches after the lock (PASS/FAIL), and
 # write the edges of OUT/REF to test_pll[_inj]_edges.txt for the design notebook.
-PLL_DIG_SIM_SRC=$(SRC_DIR)/pll_test.v $(SRC_DIR)/pll.v $(SRC_DIR)/pll_analog.v $(SIM_OUT)/sim_injection.v $(SRC_DIR)/il_dco.v $(SIM_OUT)/sim_dco.v $(SIM_OUT)/sim_sym.v $(SRC_DIR)/sim_SSBBPD.v $(SRC_DIR)/conf_div.v
+# Design target of this PDK (f_REF, FCW, K_P/K_I), from the characterization (src/pll_target.py).
+# lib/<PDK>.mk can fix any of them: PLL_F_REF, PLL_FCW, PLL_KP/PLL_KI
+PLL_TARGET_DEPS=$(SIM_OUT)/test_fine_delay.raw $(SIM_OUT)/test_mid_delay.raw $(SIM_OUT)/test_coarse_delay.raw \
+	$(SIM_OUT)/test_pll_injection.raw $(SIM_OUT)/test_sym_delay.raw $(SRC_DIR)/pll_target.py $(SRC_DIR)/pll_model.py $(PDK_MK)
+pll_target: $(SIM_OUT)/pll_target.vh
+
+# The gains after LOCKED (gear shifting) use the DCO noise when test_dco_noise has run
+$(SIM_OUT)/pll_target.vh: $(PLL_TARGET_DEPS) $(wildcard $(SIM_OUT)/test_dco_noise.csv)
+	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/pll_target.py --f-ref $(PLL_F_REF) --fcw '$(PLL_FCW)' --kp '$(PLL_KP)' --ki '$(PLL_KI)' \
+		--kp-locked '$(PLL_KP_LOCKED)' --ki-locked '$(PLL_KI_LOCKED)' | tee pll_target.txt
+
+PLL_DIG_SIM_SRC=$(SIM_OUT)/pll_target.vh $(SRC_DIR)/pll_test.v $(SRC_DIR)/pll.v $(SRC_DIR)/pll_analog.v $(SIM_OUT)/sim_injection.v $(SRC_DIR)/il_dco.v $(SIM_OUT)/sim_dco.v $(SIM_OUT)/sim_sym.v $(SRC_DIR)/sim_SSBBPD.v $(SRC_DIR)/conf_div.v
 PLL_DIG_RTL_SRC=$(SRC_DIR)/pll_logic.v $(SRC_DIR)/digital_loop_filter.v $(SRC_DIR)/term_decoder.v $(SRC_DIR)/freq_lock.v $(SRC_DIR)/fix_div.v $(SRC_DIR)/delta_sigma.v
 
 test_pll_digital: $(SIM_OUT)/test_pll.vcd
@@ -260,9 +273,11 @@ $(SIM_OUT)/test_pll_postsyn.vcd: $(CELLS_SRC) $(PLL_DIG_SIM_SRC) $(SYN_OUT)/pll_
 	cd $(SIM_OUT) && $(IVERILOG) -ginterconnect -gspecify -T max -o test_pll_postsyn.out -D SIMULATION=1 $(CELLS_ADD_DEF) $^ && $(VVP) -n test_pll_postsyn.out | tee test_pll_postsyn.txt
 	grep -q PASS $(SIM_OUT)/test_pll_postsyn.txt
 
+# Copied only when the content changes: re-generating an identical netlist (e.g. after editing
+# syn/tcl/netlist.tcl) does not re-run the characterizations
 $(SIM_OUT)/%.sp: $(SYN_OUT)/%.sp
 	mkdir -p $(SIM_OUT)
-	cp $^ $@
+	cmp -s $< $@ || cp $< $@
 
 $(SYN_OUT)/%.sp: $(SYN_OUT)/%_net.v
 	make -C $(SYN_DIR) TOP=$* gen
@@ -305,7 +320,7 @@ show_delay_overlap_digital: $(SIM_OUT)/test_mid_delay.vcd $(SIM_OUT)/test_fine_d
 # The figures (pdf) go to $(SIM_OUT)/report. Needs jupyter (nbconvert) where python3 runs natively.
 REPORT_DEPS=$(SIM_OUT)/test_fine_delay.raw $(SIM_OUT)/test_mid_delay.raw $(SIM_OUT)/test_coarse_delay.raw \
 	$(SIM_OUT)/test_pll_injection.raw $(SIM_OUT)/test_sym_delay.raw $(SIM_OUT)/test_pll.vcd $(SIM_OUT)/test_pll_inj.vcd \
-	$(SRC_DIR)/pll_design.ipynb $(SRC_DIR)/pll_model.py
+	$(SIM_OUT)/pll_target.vh $(SRC_DIR)/pll_design.ipynb $(SRC_DIR)/pll_model.py
 report: $(SIM_OUT)/report/pll_design.html
 
 $(SIM_OUT)/report/pll_design.html: $(REPORT_DEPS)
@@ -314,4 +329,8 @@ $(SIM_OUT)/report/pll_design.html: $(REPORT_DEPS)
 		--ExecutePreprocessor.timeout=3600 --output $(SIM_OUT)/report/pll_design.ipynb
 	python3 -m nbconvert --to html --no-input $(SIM_OUT)/report/pll_design.ipynb --output $@
 
-.PHONY: report
+# Comparison of every technology that has a report (sim/outputs/compare.md, compare.html)
+compare:
+	python3 $(SRC_DIR)/pll_compare.py $(SIM_DIR)/outputs
+
+.PHONY: report pll_target compare
