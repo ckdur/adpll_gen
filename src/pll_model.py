@@ -625,7 +625,9 @@ def analyze_rtl(fil, f_ref, N, tmux=0.0, settle=200e-9):
     r["t_inj"] = tA[vA == 1][0] if np.any(vA == 1) else None
     if t_lock is None:
         return r
-    t0 = t_lock + settle
+    # LOCKED comes after the frequency acquisition; with gear shifting the (slower) gains after LOCKED
+    # still finish the pull-in, so the first 20 % of the record after LOCKED is skipped as well
+    t0 = t_lock + max(settle, 0.2 * (tO[-1] - t_lock))
     rise = tO[(vO == 1) & (tO > t0)]
     half = np.diff(tO[tO > t_lock])
     r["half_min"], r["half_max"] = half.min(), half.max()

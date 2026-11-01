@@ -68,7 +68,11 @@ The architecture and the code widths (coarse 15, mid 15, fine 31) are fixed; a t
    sky130 fine/mid is 0.96 and sg13g2 mid/coarse 0.99), the injection margins, and the RTL lock/glitch rows.
 - Slow technologies: the sg13g2/sky130 cells are ~3x slower than ics55 (tuning ~0.2-0.7 GHz). The sg13g2 fine line
   saturates (and code 31 is faster than 30), which limits the pull-in. Use a lower `PLL_F_REF` for useful N.
-- `ISF_LEN` (default 20n) must hold several DCO periods.
+- `ISF_LEN` (default 20n) must hold several DCO periods. Slow PDKs set `ISF_NPHASE/NPER/TMAX/DQ` in
+  `lib/<PDK>.mk` (each ISF run is ~800 BSIM4/PSP devices; PSP is ~3x slower per step than BSIM4).
+- `ISF_FROM_PDK` (lib/<PDK>.mk) reuses the ISF of an electrically identical PDK (cmos5l <- sg13g2).
+- `analyze_rtl` skips 20 % of the record after LOCKED: with gear shifting the slower gains still pull in.
+- Results of every PDK: `docs/technology_comparison.md` (copy of `make -C sim compare`).
 
 ## Tools and docker
 

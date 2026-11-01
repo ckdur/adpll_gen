@@ -17,7 +17,10 @@ def rtl(s, k):
     r = s["rtl"].get(k)
     if not r:
         return "not run"
-    return f"lock {r['t_lock']*1e6:.2f} µs, {r['glitches']} glitches" if r["t_lock"] else "**not locked**"
+    if not r["t_lock"]:
+        return "**not locked**"
+    tie = f", TIE {ps(r['tie'])} (noise-free)" if r.get("tie") is not None else ""
+    return f"lock {r['t_lock']*1e6:.2f} µs, {r['glitches']} glitches{tie}"
 rows = [
     ("DCO tuning range (all codes)", lambda s: f"{s['tuning'][0]/1e9:.3f} – {s['tuning'][1]/1e9:.3f} GHz"),
     ("Supported band (PVT + injection timing)", lambda s: f"{s['band'][0]/1e9:.3f} – {s['band'][1]/1e9:.3f} GHz" if s["band"] else "–"),
