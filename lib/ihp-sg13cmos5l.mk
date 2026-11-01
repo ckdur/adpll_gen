@@ -23,4 +23,17 @@ endef
 CELLS_SRC=$(PDK_ROOT)/ihp-sg13cmos5l/libs.ref/sg13cmos5l_stdcell/verilog/sg13cmos5l_udp.v $(PDK_ROOT)/ihp-sg13cmos5l/libs.ref/sg13cmos5l_stdcell/verilog/sg13cmos5l_stdcell.v
 CELLS_ADD_DEF=-D FUNCTIONAL=1
 
+# ISF phase noise: periods of ~3.5 ns and edges of ~100 ps at the test codes, so 64 phases, an injection
+# every 2 periods, a 5 ps maximum step and 4x the charge (the shifts stay >> the edge error printed by
+# isf_phase_noise.py). About 4x faster than the defaults (each run is ~800 BSIM4/PSP devices)
+ISF_NPHASE?=64
+ISF_NPER?=2
+ISF_TMAX?=5p
+ISF_DQ?=200e-18
+
+# The DCO decks of the ISF analysis are identical to the ones of ihp-sg13g2 (cell names apart), and so
+# are the model files (only the compiled PSP103 OSDI differs; every characterization agrees to 6 digits):
+# the ISF result of ihp-sg13g2 is reused (each run takes ~2 h with PSP). Empty it to run the ISF here.
+ISF_FROM_PDK?=ihp-sg13g2
+
 PDK_FILE?=none

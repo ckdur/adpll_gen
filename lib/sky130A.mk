@@ -25,4 +25,12 @@ CELLS_ADD_DEF=-D FUNCTIONAL=1 -D UNIT_DELAY=\#1
 # Design target: 50 MHz reference (a slow technology: N up to ~12 in the supported band)
 PLL_F_REF?=50e6
 
+# ISF phase noise: periods of ~3.5 ns and edges of ~100 ps at the test codes, so 64 phases, an injection
+# every 2 periods, a 5 ps maximum step and 4x the charge (the shifts stay >> the edge error printed by
+# isf_phase_noise.py). About 4x faster than the defaults (each run is ~800 BSIM4/PSP devices)
+ISF_NPHASE?=64
+ISF_NPER?=2
+ISF_TMAX?=5p
+ISF_DQ?=200e-18
+
 PDK_FILE?=none

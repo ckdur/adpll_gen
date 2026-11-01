@@ -127,7 +127,9 @@ with the repo and the PDK mounted at the same absolute paths. Force with `USE_DO
 - `test_coarse_delay.sp` needs `.OPTION minbreak=1e-15` (coincident breakpoints abort the run).
 - Timing characterizations need a maximum step (`.TRAN 1p stop 0 1p`): with only `.TRAN 10n` the steps around
   the edges are ~50 ps and the `.meas` are interpolated (errors of ~10 ps).
-- Thread count goes in the generated `.spiceinit` (`NGSPICE_THREADS`), not on the command line. With parallel
+- Thread count goes in the generated `.spiceinit` (`NGSPICE_THREADS`), not on the command line. Any `make` of
+  that PDK rewrites `.spiceinit` with its own `NGSPICE_THREADS` (default 8), also while other runs are starting: run
+  every `make` of a PDK with the same `NGSPICE_THREADS` while an ISF batch is going (BSIM4 models use OpenMP threads). With parallel
   runs (`ISF_JOBS`) use `NGSPICE_THREADS=1`: jobs x threads above the core count slows everything down a lot.
 
 ## Delay models (create_sim_*.py)

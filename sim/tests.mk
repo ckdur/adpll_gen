@@ -109,6 +109,8 @@ ISF_LEN?=20n
 ISF_NPHASE?=128
 ISF_NPER?=3
 ISF_DQ?=50e-18
+# Maximum time step of the injection runs (lib/<PDK>.mk of a slow technology can raise it, and lower ISF_NPHASE)
+ISF_TMAX?=1p
 ISF_JOBS?=$(shell sysctl -n hw.ncpu 2>/dev/null || nproc)
 
 test_dco_noise: $(SIM_OUT)/test_dco_noise.csv
@@ -122,14 +124,23 @@ $(SIM_OUT)/test_dco_isf_wave.raw: $(SIM_OUT)/PLL_ILDCO.sp $(SRC_DIR)/test_dco.sp
 	cd $(SIM_OUT) && $(NGSPICE) -o test_dco_isf_wave.log test_dco_isf_wave.sp < /dev/null
 
 $(SIM_OUT)/isf_runs.txt: $(SIM_OUT)/test_dco_isf_wave.raw $(SRC_DIR)/spice_netlist.py
-	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/create_isf.py runs --twarm $(ISF_TWARM) --nphase $(ISF_NPHASE) --nper $(ISF_NPER) --dq $(ISF_DQ)
+	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/create_isf.py runs --twarm $(ISF_TWARM) --nphase $(ISF_NPHASE) --nper $(ISF_NPER) --dq $(ISF_DQ) --tmax $(ISF_TMAX)
 
 $(SIM_OUT)/isf_done: $(SIM_OUT)/isf_runs.txt
 	cd $(SIM_OUT) && xargs -P $(ISF_JOBS) -I{} sh -c '$(NGSPICE) -o {}.log {}.sp < /dev/null > /dev/null && echo "Done {}"' < isf_runs.txt
 	touch $@
 
+ifeq ($(ISF_FROM_PDK),)
 $(SIM_OUT)/test_dco_noise.csv: $(SIM_OUT)/isf_done $(SRC_DIR)/isf_phase_noise.py
 	cd $(SIM_OUT) && $(PYTHON) $(SRC_DIR)/isf_phase_noise.py | tee test_dco_noise.txt
+else
+# lib/<PDK>.mk sets ISF_FROM_PDK when the DCO is electrically identical to the one of another PDK
+# (same ngspice decks and models, e.g. ihp-sg13cmos5l and ihp-sg13g2): its ISF result is reused
+$(SIM_OUT)/test_dco_noise.csv: $(SIM_DIR)/outputs/$(ISF_FROM_PDK)/test_dco_noise.csv
+	cp $(SIM_DIR)/outputs/$(ISF_FROM_PDK)/test_dco_noise.txt $(SIM_DIR)/outputs/$(ISF_FROM_PDK)/test_dco_noise.pdf $(SIM_OUT)/
+	echo "Reused from $(ISF_FROM_PDK): electrically identical DCO (same decks and models, see lib/$(PDK).mk)" >> $(SIM_OUT)/test_dco_noise.txt
+	cp $< $@
+endif
 
 # Optional reference for test_dco_noise: Spectre autonomous PSS + pnoise of the same DCO (~10 min).
 # Native only (Spectre is not in the docker image), needs numpy. SPECTRE is the command to run it,
