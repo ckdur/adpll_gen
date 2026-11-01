@@ -15,6 +15,7 @@ module pll_logic #(
 ) (
     input VDD, VSS, // Ignored (for now)
     input REF, OUT, MID_OUT, INJ_EDGE, RST_N,
+    input INJ_EN,
     input [1:0] SS_BBPD,
     input [FILTER_BITS-1:0] KP, KI,
     input [FCW_BITS-1:0] FCW,
@@ -29,7 +30,8 @@ module pll_logic #(
     output reg [COARSE_NDELS-1:0] COARSE_MUX,
     output reg [MID_NDELS-1:0] MID_MUX,
     output reg [FINE_NDELS-1:0] FINE_MUX,
-    output reg DCO_EN, LOCKED, ERR
+    output reg DCO_EN, LOCKED, ERR,
+    output reg INJ_ACT
 );
     // Blackbox implementation is not provided
 endmodule

@@ -73,101 +73,31 @@ SIGN_OUT=$(SIGN_DIR)/outputs/$(TECH)
 SYN_ANA_NET=$(SYN_OUT)/$(TOP)_net.v
 SYN_NET=$(SYN_OUT)/$(DIGTOP)_net.v
 
-ifeq ($(PDK),ics55)
-PDK_ROOT?=$(HOME)/Documents/SymbioticEDA/ics55/icsprout55-pdk
-SCL_DIR=$(PDK_ROOT)/$(PDK)/libs.ref/$(SCL)
-IO_DIR=$(PDK_ROOT)/$(PDK)/libs.ref/ICsprout_55LLULP1233_IO_251013
-
-ifeq ($(SCL),ics55_LLSC_H7CR)
-SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ics55.v
-# Cell SPICE subcircuit and the instance line of the testbench load (PLL_CELL_BUFFX0)
-SCL_SPICE=$(SCL_DIR)/spice/$(SCL).spice
-SCL_BUFFX0=Ximpl I VDD VSS Z BUFX0P5H7R
-# The _ecos cell LEF has the signal pins on MET2 (+ VIA1), which only the _M2 GDS has.
-# (The plain MET1-pin LEF/GDS leaves some pins without access points in OpenROAD)
-SCL_LEF=$(SCL_DIR)/lef/$(SCL)_ecos.lef
-SCL_GDS=$(SCL_DIR)/gds/$(SCL)_M2.gds
-else ifeq ($(SCL),ICsprout55_9TSVT_basic)
-SYN_SRC+= $(ROOT_DIR)/src/pll_cells_$(SCL).v
-# Every cell has the well bias pins VNW / VPW, tied to the supplies here
-SCL_SPICE=$(SCL_DIR)/spice/$(SCL).spice
-SCL_BUFFX0=Ximpl I VDD VSS Z VDD VSS BUFX0P5_9TSVT
-# A single cell LEF / GDS pair, with the signal pins on MET1
-SCL_LEF=$(SCL_DIR)/lef/$(SCL).lef
-SCL_GDS=$(SCL_DIR)/gds/$(SCL).gds
-else
-$(error Unknown standard cell library SCL=$(SCL) for $(PDK))
+# Every PDK is described by three files (see "Porting to a new technology" in CLAUDE.md):
+#   lib/<PDK>.mk            this makefile fragment: PDK_ROOT, SPICE models, cell models, design target
+#   lib/<PDK>_settings.tcl  liberty/LEF/CDL/SPICE paths and the supply pin names (tcl scripts)
+#   src/pll_cells_<PDK>.v   PLL_CELL_* mapped to the standard cells
+PDK_MK=$(ROOT_DIR)/lib/$(PDK).mk
+ifeq ($(wildcard $(PDK_MK)),)
+$(error Unknown PDK '$(PDK)': $(PDK_MK) does not exist)
 endif
+include $(PDK_MK)
+# Default of the design target (after the include: lib/<PDK>.mk may set it, see src/pll_target.py)
+PLL_F_REF?=100e6
+# PLL_CELL_* map: lib/<PDK>.mk can choose another one (e.g. per standard cell library)
+PLL_CELLS_V?=$(ROOT_DIR)/src/pll_cells_$(PDK).v
+SYN_SRC+= $(PLL_CELLS_V)
 
-$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/$(PDK)/libs.tech/ngspice/ICsprout_55LLULP1225_V1p1_hsp.lib\" tt_mos" > $@.tmp
-	@echo ".INCLUDE \"$(SCL_SPICE)\"" >> $@.tmp
-	@echo ".PARAM lvdd=1.2" >> $@.tmp
-	@echo "* Load used by the testbenches (same mapping as in the pll_cells_*.v of $(SCL))" >> $@.tmp
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
-	@echo "$(SCL_BUFFX0)" >> $@.tmp
-	@echo ".ENDS" >> $@.tmp
+# models.inc: PDK_MODELS_INC (models, standard-cell SPICE, lvdd, PLL_CELL_BUFFX0)
+# .spiceinit: PDK_SPICEINIT (ngspice options of the PDK, num_threads)
+# Both are only replaced when their content changes
+$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk $(PDK_MK)
+	$(shell mkdir -p $(dir $@))$(file >$@.tmp,$(PDK_MODELS_INC))
 	@$(call update_if_changed,$@)
 
-# ngspice settings for this PDK (.spiceinit next to the testbenches)
-$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo "set ngbehavior=hsa" > $@.tmp
-	@echo "set num_threads=$(NGSPICE_THREADS)" >> $@.tmp
+$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk $(PDK_MK)
+	$(shell mkdir -p $(dir $@))$(file >$@.tmp,$(PDK_SPICEINIT))
 	@$(call update_if_changed,$@)
-
-CELLS_SRC=$(SCL_DIR)/verilog/$(SCL).v $(IO_DIR)/verilog/icsIOA_N55_3P3.v
-
-#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
-PDK_FILE?=none
-PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.lyt
-PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/ics55.map
-LEFS?=$(PDK_ROOT)/$(PDK)/libs.tech/librelane/N551P6M_ecos.lef $(SCL_LEF) $(IO_DIR)/lef/ICSIOA_N55_3P3_1P6M1TM_ecos.lef
-GDSS?=$(SCL_GDS) $(IO_DIR)/gds/ICSIOA_N55_3P3_1P6M1TM.gds
-# Cell netlists for the LVS schematic (pnr writes only the top subcircuit)
-CDLS?=$(SCL_DIR)/cdl/$(SCL).cdl $(IO_DIR)/cdl/ICSIOA_N55_3P3.cdl
-endif
-
-ifeq ($(PDK),ihp-sg13g2)
-# Use the local installation if present, otherwise the one inside the docker image
-PDK_ROOT?=$(firstword $(wildcard /opt/ext/OpenPDKs) /usr/local/share/OpenPDKs)
-SYN_SRC+= $(ROOT_DIR)/src/pll_cells_ihp-sg13g2.v
-
-$(SIM_OUT)/models.inc: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo ".LIB \"$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib\" mos_tt" > $@.tmp
-	@echo ".INCLUDE \"$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/spice/sg13g2_stdcell.spice\"" >> $@.tmp
-	@echo ".PARAM lvdd=1.2" >> $@.tmp
-	@echo "* Load used by the testbenches (same mapping as in pll_cells_ihp-sg13g2.v)" >> $@.tmp
-	@echo ".SUBCKT PLL_CELL_BUFFX0 VDD VSS I Z" >> $@.tmp
-	@echo "Ximpl Z I VDD VSS sg13g2_buf_1" >> $@.tmp
-	@echo ".ENDS" >> $@.tmp
-	@$(call update_if_changed,$@)
-
-# ngspice settings for this PDK (.spiceinit next to the testbenches)
-# The PSP models are OSDI-compiled, so ngspice needs to load them
-$(SIM_OUT)/.spiceinit: $(ROOT_DIR)/settings.mk
-	mkdir -p $(dir $@)
-	@echo "set num_threads=$(NGSPICE_THREADS)" > $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/psp103_nqs.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/r3_cmc.osdi'" >> $@.tmp
-	@echo "osdi '$(PDK_ROOT)/ihp-sg13g2/libs.tech/ngspice/osdi/mosvar.osdi'" >> $@.tmp
-	@$(call update_if_changed,$@)
-
-CELLS_SRC=$(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_udp.v $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
-
-#PDK_FILE ?= $(PDK_ROOT)/$(PDK)/libs.tech/magic/$(PDK).magicrc
-PDK_FILE?=none
-PDK_KLAYOUT_TECHFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.lyt
-PDK_KLAYOUT_MAPFILE?=$(PDK_ROOT)/$(PDK)/libs.tech/klayout/tech/sg13g2.map
-LEFS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_tech.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/lef/sg13g2_stdcell.lef $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/lef/sg13g2_io.lef
-GDSS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/gds/sg13g2_stdcell.gds $(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_io/gds/sg13g2_io.gds
-# Cell netlists for the LVS schematic (pnr writes only the top subcircuit)
-# No IO cells in the design (and KLayout cannot read the resistors of sg13g2_io.cdl)
-CDLS?=$(PDK_ROOT)/$(PDK)/libs.ref/sg13g2_stdcell/cdl/sg13g2_stdcell.cdl
-endif
 
 export PDK
 export PDK_ROOT

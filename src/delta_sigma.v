@@ -140,9 +140,9 @@ module delta_sigma #(
     assign DSM_CAP_N = DSM_OUT_D[BITS_INT] != 1'b0 && dout[4] == 1'b1;    // If -dout and suddenly negative
     always @(*) begin
         if (DSM_CAP_P)
-            DSM_OUT = {(BITS_INT-1){1'b1}};    // Cap to maximum
+            DSM_OUT = {BITS_INT{1'b1}};        // Cap to maximum (NOTE: was {(BITS_INT-1){1'b1}}, half the range)
         else if (DSM_CAP_N)
-            DSM_OUT = {(BITS_INT-1){1'b0}};    // Cap to minimum
+            DSM_OUT = {BITS_INT{1'b0}};        // Cap to minimum
         else
             DSM_OUT = DSM_OUT_D[BITS_INT-1:0]; // Just output
     end

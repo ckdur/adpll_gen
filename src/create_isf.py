@@ -26,8 +26,9 @@ TB = "test_dco.sp"          # The DCO testbench (fixed codes)
 DUT = "PLL_ILDCO.sp"        # The netlist of the DCO
 DUT_INST = "xdco"           # Instance of the DCO in the testbench
 OUT = "out"                 # Oscillator output used as phase reference
-NMOS = r'^(nm\w*_lp|sg13_\w+_nmos)$'   # Transistor wrappers (d g s b) of the PDKs
-PMOS = r'^(pm\w*_lp|sg13_\w+_pmos)$'
+# Transistor wrappers (subcircuits d g s b) of the PDKs: ics55, IHP (sg13g2/sg13cmos5l), sky130
+NMOS = r'^(nm\w*_lp|sg13_\w+_nmos|sky130_fd_pr__(special_)?nfet_\w+)$'
+PMOS = r'^(pm\w*_lp|sg13_\w+_pmos|sky130_fd_pr__(special_)?pfet_\w+)$'
 LUT_POINTS = 13             # Vgs and Vds points of the noise tables
 
 def spice_num(s):
@@ -142,7 +143,8 @@ def cmd_runs(args):
     text = tb_text()
     if not re.search(r'^\.inc\s+' + re.escape(DUT) + r'\s*$', text, re.M | re.I):
         sys.exit(f"{TB} does not include {DUT}")
-    tran = f".TRAN 1p {tstop:.6g} uic\n"
+    # Maximum time step: 1 ps resolves the edges of a fast technology; slow ones (edges of ~100 ps) can use more
+    tran = f".TRAN 1p {tstop:.6g} 0 {args.tmax:g} uic\n"
 
     with open(DUT) as f:
         dut_text = f.read()
@@ -230,5 +232,6 @@ parser.add_argument("--len", type=spice_num, default=5e-9, help="Length of the s
 parser.add_argument("--nphase", type=int, default=128, help="Points of the ISF per period")
 parser.add_argument("--nper", type=int, default=3, help="Periods between injections")
 parser.add_argument("--dq", type=spice_num, default=50e-18, help="Injected charge (C)")
+parser.add_argument("--tmax", type=spice_num, default=1e-12, help="Maximum time step of the injection runs")
 args = parser.parse_args()
 {"wave": cmd_wave, "runs": cmd_runs}[args.step](args)

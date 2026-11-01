@@ -92,6 +92,7 @@ Vcoarse<0> coarse<0> GND DC=lvdd
 Vinj_edge inj_edge GND DC=0.0
 Vinj_win inj_win GND DC=0.0
 Vdco_en dco_en GND DC=lvdd
+Vbbpd_ck bbpd_ck GND DC=0.0
 
 * The DCO
 xdco VDD GND
@@ -99,7 +100,7 @@ xdco VDD GND
 + mid<14> mid<13> mid<12> mid<11> mid<10> mid<9> mid<8> mid<7> mid<6> mid<5> mid<4> mid<3> mid<2> mid<1> mid<0>
 + fine<30> fine<29> fine<28> fine<27> fine<26> fine<25> fine<24> fine<23> fine<22> fine<21> fine<20> fine<19> fine<18> fine<17> fine<16> fine<15>
 + fine<14> fine<13> fine<12> fine<11> fine<10> fine<9> fine<8> fine<7> fine<6> fine<5> fine<4> fine<3> fine<2> fine<1> fine<0>
-+ inj_edge inj_win dco_en
++ inj_edge inj_win dco_en bbpd_ck
 + SS_BBPD<1> SS_BBPD<0> OUT MID_OUT PLL_ILDCO
 
 * Just for the load

@@ -23,7 +23,7 @@ module PLL_ANALOG #(
     output [1:0] SS_BBPD,
     output OUT, MID_OUT, INJ_EDGE
 );
-    wire INJ_WIN;
+    wire INJ_WIN, BBPD_CK;
 
     `INJECTION_TOP #(
         .NDELS(IL_NDELS)
@@ -32,7 +32,7 @@ module PLL_ANALOG #(
         .VDD(VDD), .VSS(VSS),
 `endif
         .REF(REF), .INJ_EN(INJ_EN),
-        .INJ_EDGE(INJ_EDGE), .INJ_WIN(INJ_WIN)
+        .INJ_EDGE(INJ_EDGE), .INJ_WIN(INJ_WIN), .BBPD_CK(BBPD_CK)
     );
 
     PLL_ILDCO #(
@@ -46,7 +46,7 @@ module PLL_ANALOG #(
         .COARSE_MUX(COARSE_MUX),
         .MID_MUX(MID_MUX),
         .FINE_MUX(FINE_MUX),
-        .INJ_EDGE(INJ_EDGE), .INJ_WIN(INJ_WIN), .DCO_EN(DCO_EN),
+        .INJ_EDGE(INJ_EDGE), .INJ_WIN(INJ_WIN), .DCO_EN(DCO_EN), .BBPD_CK(BBPD_CK),
         .SS_BBPD(SS_BBPD),
         .OUT(OUT), .MID_OUT(MID_OUT)
     );

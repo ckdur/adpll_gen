@@ -41,21 +41,14 @@ module pll_digital_loop_filter #(
     WIN ________________^^^^^^^^^________________ (injecting rising)
     WIN ________________________________^^^^^^^^^ (injecting falling)
     */
-`ifdef WITH_REF_TRIG_OUT
-    // SS_BBPD symbols:
-    // REF,OUT = 1,0: -1
-    // REF,OUT = 0,1: +1
-    // Otherwise    :  0 (Possibly an error)
-    wire SYMBOL_P = !SS_BBPD_REF && SS_BBPD_OUT;
-    wire SYMBOL_N = SS_BBPD_REF && !SS_BBPD_OUT;
-`else
-    // SS_BBPD symbols:
-    // REF,OUT = 1,0: +1
-    // REF,OUT = 1,1: -1
-    // Otherwise    :  0 (Possibly an error)
+    // SS_BBPD is the SS-BBPD latch captured after the arbitration (il_dco.v):
+    // REF,OUT = 1,0: the DCO edge came first -> DCO early -> +1 (more delay, slower)
+    // REF,OUT = 0,1: the injected edge came first -> DCO late -> -1 (less delay, faster)
+    // Otherwise    :  0 (not supposed to happen, the latch did not arbitrate)
+    // NOTE: The diagram above is the old capture (with INJ_EDGE, before the arbitration),
+    // which sampled the level of the DCO (REF was always 1, OUT the level)
     wire SYMBOL_P = SS_BBPD_REF && !SS_BBPD_OUT;
-    wire SYMBOL_N = SS_BBPD_REF && SS_BBPD_OUT;
-`endif
+    wire SYMBOL_N = !SS_BBPD_REF && SS_BBPD_OUT;
 
     // The filter is H_DLF = KP + KI/s
 

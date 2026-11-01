@@ -43,6 +43,9 @@ if { $SCL == "ics55_LLSC_H7CR" } {
   set SCL_LEF "${SCL_DIR}/lef/${SCL}.lef"
   set SCL_GDS "${SCL_DIR}/gds/${SCL}.gds"
   set libdbname "${SCL}"
+  # The well bias pins (VNW / VPW) go to the supplies too (syn/tcl/netlist.tcl)
+  set POWER_PINS {^(VDD|VNW)$}
+  set GROUND_PINS {^(VSS|VPW)$}
 } else {
   error "Unknown standard cell library $SCL for ics55"
 }

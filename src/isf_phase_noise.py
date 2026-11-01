@@ -16,8 +16,11 @@
 #    h_dev(x) = h_s(x) - h_d(x) (0 for nets that are not oscillating, e.g. supplies)
 #
 #    White (1/f^2 region):   S_phi(df) = sum_dev mean_x(h_dev^2 Sth) / (2 pi df)^2
-#    Flicker (1/f^3 region): S_phi(df) = sum_dev mean_x(h_dev sqrt(K))^2 / df^ef / (2 pi df)^2
+#    Flicker (1/f^3 region): S_phi(df) = sum_dev mean_x(h_dev sqrt(Sfl(df)))^2 / (2 pi df)^2
 #    L(df) = S_phi(df) / 2 (single sideband, dBc/Hz)
+#    Sfl(f) = S(f) - Sth is used as tabulated (log-log interpolated in f), per device: NMOS and PMOS
+#    have different flicker slopes, and a single power law fitted at low frequency overestimates
+#    L by ~6 dB at 1 MHz (checked against Spectre PSS+pnoise, see src/spectre_dco_pnoise.py).
 
 import json, re, sys
 import numpy as np
@@ -91,8 +94,8 @@ def read_lut(log):
     fl2 = np.maximum(spec[:, :, 1] - sth, 0)
     ok = (fl1 > 0) & (fl2 > 0)
     ef = float(np.median(np.log10(fl1[ok] / fl2[ok]) / np.log10(freqs[1] / freqs[0]))) if ok.any() else 1.0
-    k = fl1 * freqs[0] ** ef
-    return dict(vgs=vgs, vds=vds, sth=sth, k=k, ef=ef)
+    fl = np.maximum(spec - sth[:, :, None], 0)
+    return dict(vgs=vgs, vds=vds, sth=sth, fl=fl, freqs=freqs, ef=ef)
 
 def interp2(lut, table, vgs, vds):
     """Bilinear interpolation on the grid (clipped to its range)"""
@@ -103,6 +106,8 @@ def interp2(lut, table, vgs, vds):
     j = np.clip(np.searchsorted(dx, vds) - 1, 0, len(dx) - 2)
     a = (vgs - gx[i]) / (gx[i + 1] - gx[i])
     b = (vds - dx[j]) / (dx[j + 1] - dx[j])
+    if table.ndim == 3:     # Spectrum per point: interpolate every frequency
+        a, b = a[:, None], b[:, None]
     return ((1 - a) * (1 - b) * table[i, j] + a * (1 - b) * table[i + 1, j]
             + (1 - a) * b * table[i, j + 1] + a * b * table[i + 1, j + 1])
 
@@ -137,7 +142,6 @@ def main():
     # 3. Contribution of every transistor
     white = {}
     flick = {}
-    efs = {}
     for dev in setup["devices"]:
         hd = h.get(dev["d"], 0.0)
         hsrc = h.get(dev["s"], 0.0)
@@ -153,26 +157,39 @@ def main():
         vgs = np.where(swap, sign * (vg - vd), vgs)
         vds = np.abs(vds)
         sth = dev["m"] * interp2(lut, lut["sth"], vgs, vds)
-        k = dev["m"] * interp2(lut, lut["k"], vgs, vds)
+        sfl = dev["m"] * interp2(lut, lut["fl"], vgs, vds)          # (NX, nfreq)
         net = dev["d"] if not np.isscalar(hd) else dev["s"]
         white[net] = white.get(net, 0) + np.mean(hdev ** 2 * sth)
-        flick[net] = flick.get(net, 0) + np.mean(hdev * np.sqrt(k)) ** 2
-        efs[net] = lut["ef"]
+        # Flicker is slow compared to the period: it couples through the mean of h*sqrt(Sfl)
+        flick[net] = flick.get(net, 0) + np.mean(hdev[:, None] * np.sqrt(sfl), axis=0) ** 2
+        lfreqs = lut["freqs"]
 
-    ef = float(np.mean(list(efs.values())))
+    def on_freqs(y):
+        """Log-log interpolation of a flicker term from the table frequencies to FREQS"""
+        ly = np.log10(np.maximum(y, 1e-300))
+        lf = np.log10(lfreqs)
+        out = np.interp(np.log10(FREQS), lf, ly)
+        lo = np.log10(FREQS) < lf[0]                                 # Extrapolate the first slope
+        out[lo] = ly[0] + (ly[1] - ly[0]) / (lf[1] - lf[0]) * (np.log10(FREQS[lo]) - lf[0])
+        return 10 ** out
+
     w = sum(white.values())
-    fl = sum(flick.values())
+    fl = on_freqs(sum(flick.values()))
     s_white = w / (2 * np.pi * FREQS) ** 2
-    s_flick = fl / FREQS ** ef / (2 * np.pi * FREQS) ** 2
+    s_flick = fl / (2 * np.pi * FREQS) ** 2
     L = 10 * np.log10((s_white + s_flick) / 2)
-    corner = (fl / w) ** (1 / ef) if w > 0 and fl > 0 else 0.0
+    above = np.where(s_flick < s_white)[0]
+    corner = float(FREQS[above[0]]) if len(above) else 0.0
+    i1, i2 = np.argmin(np.abs(FREQS - 1e5)), np.argmin(np.abs(FREQS - 1e7))
+    ef = float(-np.log10(fl[i2] / fl[i1]) / np.log10(FREQS[i2] / FREQS[i1]))
 
-    print(f"\nFlicker exponent ef = {ef:.3f}, 1/f^3 corner = {corner/1e3:.4g} kHz")
+    print(f"\nFlicker exponent (100 kHz - 10 MHz) ef = {ef:.3f}, 1/f^3 corner = {corner/1e3:.4g} kHz")
     for f0 in REPORT:
         i = np.argmin(np.abs(FREQS - f0))
         print(f"L({FREQS[i]:8.3g} Hz) = {L[i]:7.2f} dBc/Hz")
     print("\nTop contributors at 1 MHz (white + flicker):")
-    tot = {n: white.get(n, 0) + flick.get(n, 0) / 1e6 ** ef for n in white}
+    i1m = np.argmin(np.abs(FREQS - 1e6))
+    tot = {n: white.get(n, 0) + on_freqs(flick[n])[i1m] for n in white}
     for n, c in sorted(tot.items(), key=lambda kv: -kv[1])[:8]:
         print(f"  {n:45s} {100 * c / sum(tot.values()):5.1f} %")
 
